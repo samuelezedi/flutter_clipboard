@@ -1,3 +1,8 @@
+## 0.1.2+1
+
+* No major changes, just a few tweaks in readme, changelog.
+
+
 ## 0.1.2
 
 * No major changes, just a few tweaks in readme, changelog, example director etc.
