@@ -8,9 +8,7 @@
 [GitHub](https://github.com/samuelezedi/flutter_clipboard)
 
 
-## Usage
-
-Basic:
+## Usage Basic:
 
 ```dart
 import 'package:clipboard/clipboard.dart';
@@ -22,7 +20,7 @@ import 'package:clipboard/clipboard.dart';
   FlutterClipboard.copy('hello flutter friends').then(( value ) => print('copied'));
 ```
 
-### To Paste from clipboard whats copied anywhere in your phone
+### To Paste from clipboard what's copied anywhere in your phone
 
 ```dart
 FlutterClipboard.paste().then((value) {
