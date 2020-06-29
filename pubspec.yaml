@@ -1,6 +1,6 @@
 name: clipboard
-description: A flutter package  to copy text tp clipboard and paste from clipboard.
-version: 0.0.1
+description: A flutter package that helps copy text to clipboard and paste from clipboard.
+version: 0.1.1
 author:
 homepage:
 
