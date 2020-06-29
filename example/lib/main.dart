@@ -1,4 +1,4 @@
-import 'package:example/core.dart';
+import 'package:clipboard/clipboard.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 

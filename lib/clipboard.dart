@@ -3,20 +3,18 @@ library clipboard;
 import 'package:flutter/services.dart';
 
 /// A Flutter Clipboard Plugin.
-class FlutterClipboard{
-
+class FlutterClipboard {
   /// copy receives a string text and saves to Clipboard
   /// returns void
   static Future<void> copy(String text) async {
-    if(text.isEmpty) {
-      Clipboard.setData(ClipboardData(
-          text: text
-      ));
+    if (text.isEmpty) {
+      Clipboard.setData(ClipboardData(text: text));
       return;
-    } else{
-      throw('Please enter a string');
+    } else {
+      throw ('Please enter a string');
     }
   }
+
   /// Paste retrieves the data from clipboard.
   static Future<String> paste() async {
     ClipboardData data = await Clipboard.getData('text/plain');
@@ -26,15 +24,14 @@ class FlutterClipboard{
   /// controlC receives a string text and saves to Clipboard
   /// returns boolean value
   static Future<bool> controlC(String text) async {
-    if(text.isEmpty) {
-      await Clipboard.setData(ClipboardData(
-          text: text
-      ));
+    if (text.isEmpty) {
+      await Clipboard.setData(ClipboardData(text: text));
       return true;
-    } else{
+    } else {
       return false;
     }
   }
+
   /// controlV retrieves the data from clipboard.
   /// same as paste
   /// But returns dynamic data
@@ -42,6 +39,4 @@ class FlutterClipboard{
     ClipboardData data = await Clipboard.getData('text/plain');
     return data;
   }
-
-
 }
