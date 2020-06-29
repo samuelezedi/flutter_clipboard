@@ -47,6 +47,7 @@ class _HomePageState extends State<HomePage> {
               ),
             ),
             Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: <Widget>[
                 InkWell(
                   onTap: (){
@@ -65,6 +66,24 @@ class _HomePageState extends State<HomePage> {
                       borderRadius: BorderRadius.circular(15)
                     ),
                     child: Text('COPY'),
+                  ),
+                ),
+                InkWell(
+                  onTap: (){
+
+                      FlutterClipboard.paste().then((value) {
+                        print(value);
+                        field.text = value;
+                      });
+                  },
+                  child: Container(
+                    width: 100,
+                    height: 60,
+                    decoration: BoxDecoration(
+                        color: Colors.blue,
+                        borderRadius: BorderRadius.circular(15)
+                    ),
+                    child: Text('PASTE'),
                   ),
                 )
               ],

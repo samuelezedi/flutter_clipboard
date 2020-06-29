@@ -7,10 +7,14 @@ class FlutterClipboard{
 
   ///
   static Future<void> copy(String text) async {
-    Clipboard.setData(ClipboardData(
-        text: text
-    ));
-    return;
+    if(text.isEmpty) {
+      Clipboard.setData(ClipboardData(
+          text: text
+      ));
+      return;
+    } else{
+      throw('Please enter a string');
+    }
   }
 
   static Future<String> paste() async {
