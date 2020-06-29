@@ -35,10 +35,10 @@ FlutterClipboard.paste().then((value) {
 
 ## Why I made this plugin
 
-I have built quite a few app that required being able to copy to clipboard until I wanted to build a URL shortener,
-now I need people to be able to paste from clipboard and I discover the plugin I was using could not perform that, I
-search and found another plugin that could paste from clipboard but would only paste what was copied from within you app
-. Now I wanted user to paste what was in the Phones Clipboard, I discovered a way and then built this to help many other developers.
+I have built quite a few apps that required being able to copy to clipboard until I wanted to build a URL shortener,
+now I needed users to be able to paste from clipboard and I discover the plugin I was using could not perform that, I
+search and found another plugin that could paste from clipboard but would only paste what was copied from within your app
+. Now I wanted user to paste what was in the Phones Clipboard, I discovered a way and then built this to help developers.
 ### kindly follow on github
 [github](https://github.com/samuelezedi)
 
