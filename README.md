@@ -16,7 +16,7 @@ Basic:
 import 'package:clipboard/clipboard.dart';
 ```
 
-###To Copy to clipboard from your app
+### To Copy to clipboard from your app
 
 ```dart
   FlutterClipboard.copy('hello flutter friends').then(( value ) => print('copied'));
