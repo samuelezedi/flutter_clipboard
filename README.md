@@ -12,13 +12,13 @@
 import 'package:clipboard/clipboard.dart';
 ```
 
-### To Copy to clipboard from your app
+### Copy to clipboard from your app
 
 ```dart
   FlutterClipboard.copy('hello flutter friends').then(( value ) => print('copied'));
 ```
 
-### To Paste from clipboard what's copied anywhere in your phone
+### Paste from clipboard what's copied anywhere in your phone
 
 ```dart
 FlutterClipboard.paste().then((value) {
