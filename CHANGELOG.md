@@ -1,3 +1,11 @@
+## 0.1.2+3
+
+* No major changes, edited readme, changelog, pubspec.yaml.
+
+## 0.1.2+2
+
+* No major changes, edited readme, changelog, pubspec.yaml.
+
 ## 0.1.2+1
 
 * No major changes, just a few tweaks in readme, changelog.
