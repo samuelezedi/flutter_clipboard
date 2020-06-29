@@ -77,10 +77,8 @@ class _HomePageState extends State<HomePage> {
                       ),
                     ),
                     InkWell(
-                      onTap: (){
-                          
+                      onTap: (){                          
                           FlutterClipboard.paste().then((value) {
-                            print(value);
                             setState(() {
                               field.text = value;
                               pasteValue = value;
