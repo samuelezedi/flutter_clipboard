@@ -1,3 +1,5 @@
-## [0.0.1] - TODO: Add release date.
+## 0.1.1
 
-* TODO: Describe initial release.
+* First release
+* User can Copy from clipboard
+* User can Paste from cliboard,
