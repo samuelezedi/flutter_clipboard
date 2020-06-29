@@ -11,10 +11,10 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Flutter Demo',
+      title: 'Flutter Clipboard',
+      debugShowCheckedModeBanner: false,
       theme: ThemeData(
         primarySwatch: Colors.blue,
-        
         visualDensity: VisualDensity.adaptivePlatformDensity,
       ),
       home: HomePage(),
@@ -31,64 +31,81 @@ class HomePage extends StatefulWidget {
 class _HomePageState extends State<HomePage> {
   
   TextEditingController field = TextEditingController();
+  String pasteValue='';
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       body: Container(
-        child: Column(
-          children: <Widget>[
-            SizedBox(
-              height: 200,
-            ),
-            TextFormField(
-              controller: field,
-              decoration: InputDecoration(
-                hintText: 'Enter text'
-              ),
-            ),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        child: Padding(
+          padding: const EdgeInsets.all(20.0),
+          child: SingleChildScrollView(
+            child: Column(
               children: <Widget>[
-                InkWell(
-                  onTap: (){
-                    if(field.text.trim() == ""){
-                      print('enter text');
-                    } else {
-                      FlutterClipboard.copy(field.text).then(( value ) =>
-                          print('copied'));
-                    }
-                  },
-                  child: Container(
-                    width: 100,
-                    height: 60,
-                    decoration: BoxDecoration(
-                      color: Colors.blue,
-                      borderRadius: BorderRadius.circular(15)
-                    ),
-                    child: Text('COPY'),
+                SizedBox(
+                  height: 100,
+                ),
+                TextFormField(
+                  controller: field,
+                  decoration: InputDecoration(
+                    hintText: 'Enter text'
                   ),
                 ),
-                InkWell(
-                  onTap: (){
-
-                      FlutterClipboard.paste().then((value) {
-                        print(value);
-                        field.text = value;
-                      });
-                  },
-                  child: Container(
-                    width: 100,
-                    height: 60,
-                    decoration: BoxDecoration(
-                        color: Colors.blue,
-                        borderRadius: BorderRadius.circular(15)
+                SizedBox(
+                  height: 20,
+                ),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: <Widget>[
+                    InkWell(
+                      onTap: (){
+                        if(field.text.trim() == ""){
+                          print('enter text');
+                        } else {
+                          print(field.text);
+                          FlutterClipboard.copy(field.text).then(( value ) =>
+                              print('copied'));
+                        }
+                      },
+                      child: Container(
+                        width: 100,
+                        height: 50,
+                        decoration: BoxDecoration(
+                          color: Colors.blue,
+                          borderRadius: BorderRadius.circular(15)
+                        ),
+                        child: Center(child: Text('COPY')),
+                      ),
                     ),
-                    child: Text('PASTE'),
-                  ),
-                )
+                    InkWell(
+                      onTap: (){
+                          
+                          FlutterClipboard.paste().then((value) {
+                            print(value);
+                            setState(() {
+                              field.text = value;
+                              pasteValue = value;
+                            });
+                          });
+                      },
+                      child: Container(
+                        width: 100,
+                        height: 50,
+                        decoration: BoxDecoration(
+                            color: Colors.blue,
+                            borderRadius: BorderRadius.circular(15)
+                        ),
+                        child: Center(child: Text('PASTE')),
+                      ),
+                    )
+                  ],
+                ),
+                SizedBox(
+                  height: 20,
+                ),
+                Text('Clipboard Text: $pasteValue',style: TextStyle(fontSize: 20),)
               ],
-            )
-          ],
+            ),
+          ),
         ),
       ),
     );
