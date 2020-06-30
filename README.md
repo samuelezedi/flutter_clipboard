@@ -21,13 +21,13 @@ import 'package:clipboard/clipboard.dart';
 ### Paste from clipboard what's copied anywhere in the device
 
 ```dart
-FlutterClipboard.paste().then((value) {
-  // Do what ever you want with the value.
-  setState(() {
-    field.text = value;
-    pasteValue = value;
+  FlutterClipboard.paste().then((value) {
+    // Do what ever you want with the value.
+    setState(() {
+      field.text = value;
+      pasteValue = value;
+    });
   });
-});
 ```
 
 
