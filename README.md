@@ -1,6 +1,6 @@
 # clipboard
 
-[![pub package](https://img.shields.io/badge/pub-0.1.5-brightgreen)](https://github.com/samuelezedi/flutter_clipboard)
+[![pub package](https://img.shields.io/badge/0.1.2+5-brightgreen)](https://github.com/samuelezedi/flutter_clipboard)
 
 
 [GitHub](https://github.com/samuelezedi/flutter_clipboard)
