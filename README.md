@@ -18,7 +18,7 @@ import 'package:clipboard/clipboard.dart';
   FlutterClipboard.copy('hello flutter friends').then(( value ) => print('copied'));
 ```
 
-### Paste from clipboard what's copied anywhere in your phone
+### Paste from clipboard what's copied anywhere in the device
 
 ```dart
 FlutterClipboard.paste().then((value) {
