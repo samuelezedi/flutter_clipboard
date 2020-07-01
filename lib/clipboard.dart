@@ -7,7 +7,7 @@ class FlutterClipboard {
   /// copy receives a string text and saves to Clipboard
   /// returns void
   static Future<void> copy(String text) async {
-    if (!text.isEmpty) {
+    if (text.isNotEmpty) {
       Clipboard.setData(ClipboardData(text: text));
       return;
     } else {
@@ -24,7 +24,7 @@ class FlutterClipboard {
   /// controlC receives a string text and saves to Clipboard
   /// returns boolean value
   static Future<bool> controlC(String text) async {
-    if (!text.isEmpty) {
+    if (text.isNotEmpty) {
       await Clipboard.setData(ClipboardData(text: text));
       return true;
     } else {

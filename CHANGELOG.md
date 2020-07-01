@@ -1,3 +1,8 @@
+## 0.1.2+8
+
+* Fixed bug in clipboard class
+* No major changes, edited readme, changelog, pubspec.yaml.
+
 ## 0.1.2+7
 
 * Fixed bug in clipboard class
