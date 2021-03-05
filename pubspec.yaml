@@ -6,7 +6,7 @@ authors:
 homepage: https://github.com/samuelezedi/flutter_clipboard
 
 environment:
-  sdk: ">=2.7.0 <3.0.0"
+  sdk: ">=2.12.0 <3.0.0"
 
 dependencies:
   flutter:

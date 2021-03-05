@@ -17,8 +17,8 @@ class FlutterClipboard {
 
   /// Paste retrieves the data from clipboard.
   static Future<String> paste() async {
-    ClipboardData data = await Clipboard.getData('text/plain');
-    return data.text.toString();
+    ClipboardData? data = await Clipboard.getData('text/plain');
+    return data?.text?.toString() ?? "";
   }
 
   /// controlC receives a string text and saves to Clipboard
@@ -36,7 +36,7 @@ class FlutterClipboard {
   /// same as paste
   /// But returns dynamic data
   static Future<dynamic> controlV() async {
-    ClipboardData data = await Clipboard.getData('text/plain');
+    ClipboardData? data = await Clipboard.getData('text/plain');
     return data;
   }
 }
