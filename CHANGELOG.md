@@ -1,3 +1,8 @@
+## 0.1.3
+
+* Added null safety
+
+
 ## 0.1.2+8
 
 * Fixed bug in clipboard class
