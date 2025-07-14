@@ -1,7 +1,6 @@
 library clipboard;
 
 import 'dart:async';
-import 'dart:typed_data';
 import 'package:flutter/services.dart';
 
 /// Custom exception for clipboard operations
@@ -20,7 +19,7 @@ class ClipboardException implements Exception {
 class EnhancedClipboardData {
   final String? text;
   final String? html;
-  final Uint8List? imageBytes;
+  final List<int>? imageBytes;
   final List<String>? filePaths;
   final Map<String, dynamic>? customData;
   final DateTime? timestamp;
@@ -117,7 +116,7 @@ class FlutterClipboard {
         text: text,
         html: html,
         imageBytes:
-            formats['image/png'] is Uint8List ? formats['image/png'] : null,
+            formats['image/png'] is List<int> ? formats['image/png'] : null,
         customData: formats,
       ));
     } catch (e) {
