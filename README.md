@@ -2,7 +2,7 @@
 
 [![pub package](https://img.shields.io/badge/3.0.0-brightgreen)](https://github.com/samuelezedi/flutter_clipboard)
 
-A powerful Flutter package that provides comprehensive clipboard functionality with **true** rich text support, **native** clipboard monitoring, and advanced features. Built with platform channels for maximum performance and reliability.
+The most powerful clipboard package for Flutter. Unlike basic clipboard solutions, this package delivers **true multi-format clipboard support** with native platform channel implementations. Copy and paste **text, HTML, and images** simultaneously, monitor clipboard changes in real-time with native listeners, and enjoy production-grade reliability with comprehensive error handling and memory-safe listener management. Built from the ground up with platform channels for maximum performance and cross-platform compatibility.
 
 [GitHub](https://github.com/samuelezedi/flutter_clipboard)
 
