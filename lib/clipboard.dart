@@ -4,6 +4,10 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 
+// Conditional imports for web support
+import 'src/clipboard_web_stub.dart'
+    if (dart.library.html) 'src/clipboard_web.dart';
+
 /// Custom exception for clipboard operations
 class ClipboardException implements Exception {
   final String message;
@@ -243,6 +247,24 @@ class FlutterClipboard {
     if (imageBytes.isEmpty) {
       throw ClipboardException('Image bytes cannot be empty', 'EMPTY_IMAGE');
     }
+    
+    // Web platform support
+    if (kIsWeb) {
+      try {
+        await _copyImageWeb(imageBytes);
+        final data = EnhancedClipboardData(imageBytes: imageBytes);
+        _lastData = data;
+        _notifyListeners(data);
+        return;
+      } catch (e) {
+        throw ClipboardException(
+          'Failed to copy image on web: $e',
+          'COPY_IMAGE_ERROR',
+        );
+      }
+    }
+    
+    // Native platform support
     try {
       final result = await _channel.invokeMethod<bool>(
         'copyImage',
@@ -263,6 +285,12 @@ class FlutterClipboard {
       throw ClipboardException('Failed to copy image: $e', 'COPY_IMAGE_ERROR');
     }
   }
+  
+  /// Web-specific image copy implementation
+  static Future<void> _copyImageWeb(Uint8List imageBytes) async {
+    // Use conditional import for web - function is imported from web stub/web implementation
+    return copyImageWebImpl(imageBytes);
+  }
 
   /// Copy with success/error callbacks
   static Future<void> copyWithCallback({
@@ -282,6 +310,22 @@ class FlutterClipboard {
 
   /// Paste text from clipboard
   static Future<String> paste() async {
+    // Web platform support
+    if (kIsWeb) {
+      try {
+        return await pasteTextWebImpl();
+      } catch (e) {
+        // Fallback to Flutter's Clipboard API on web
+        try {
+          final data = await Clipboard.getData('text/plain');
+          return data?.text?.toString() ?? "";
+        } catch (fallbackError) {
+          throw ClipboardException('Failed to paste text on web: $e', 'PASTE_ERROR');
+        }
+      }
+    }
+    
+    // Native platform support
     try {
       final result = await _channel.invokeMethod<Map<dynamic, dynamic>>('paste');
       if (result != null && result['text'] != null) {
@@ -305,6 +349,35 @@ class FlutterClipboard {
 
   /// Paste rich text from clipboard
   static Future<EnhancedClipboardData> pasteRichText() async {
+    // Web platform support
+    if (kIsWeb) {
+      try {
+        final result = await pasteRichTextWebImpl();
+        // Convert Map to EnhancedClipboardData
+        final data = EnhancedClipboardData.fromMap(result as Map<dynamic, dynamic>);
+        _lastData = data;
+        return data;
+      } catch (e) {
+        // Fallback to Flutter's Clipboard API on web
+        try {
+          final data = await Clipboard.getData('text/plain');
+          final htmlData = await Clipboard.getData('text/html');
+          final clipboardData = EnhancedClipboardData(
+            text: data?.text,
+            html: htmlData?.text,
+          );
+          _lastData = clipboardData;
+          return clipboardData;
+        } catch (fallbackError) {
+          throw ClipboardException(
+            'Failed to paste rich text on web: $e',
+            'PASTE_RICH_ERROR',
+          );
+        }
+      }
+    }
+    
+    // Native platform support
     try {
       final result = await _channel.invokeMethod<Map<dynamic, dynamic>>('pasteRichText');
       if (result != null) {
@@ -349,6 +422,17 @@ class FlutterClipboard {
   /// Paste image from clipboard
   /// Returns the image bytes if available, null otherwise
   static Future<Uint8List?> pasteImage() async {
+    // Web platform support
+    if (kIsWeb) {
+      try {
+        return await _pasteImageWeb();
+      } catch (e) {
+        // Return null on web errors (clipboard might not have image)
+        return null;
+      }
+    }
+    
+    // Native platform support
     try {
       final result = await _channel.invokeMethod<Map<dynamic, dynamic>>('pasteImage');
       if (result != null && result['imageBytes'] != null) {
@@ -361,6 +445,12 @@ class FlutterClipboard {
     } catch (_) {
       return null;
     }
+  }
+  
+  /// Web-specific image paste implementation
+  static Future<Uint8List?> _pasteImageWeb() async {
+    // Use conditional import for web - function is imported from web stub/web implementation
+    return pasteImageWebImpl();
   }
 
   /// Get clipboard content type

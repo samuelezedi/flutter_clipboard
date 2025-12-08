@@ -7,7 +7,7 @@ import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.net.Uri;
 import android.os.Build;
-import android.provider.MediaStore;
+import androidx.core.content.FileProvider;
 import io.flutter.plugin.common.MethodCall;
 import io.flutter.plugin.common.MethodChannel;
 import io.flutter.plugin.common.EventChannel;
@@ -130,7 +130,6 @@ public class ClipboardChannelHandler implements MethodChannel.MethodCallHandler,
                 imageBytes = (List<Integer>) formats.get("image/png");
             }
 
-            // Handle image first
             if (imageBytes != null && !imageBytes.isEmpty()) {
                 byte[] byteArray = new byte[imageBytes.size()];
                 for (int i = 0; i < imageBytes.size(); i++) {
@@ -151,7 +150,6 @@ public class ClipboardChannelHandler implements MethodChannel.MethodCallHandler,
                 }
             }
 
-            // Fallback to HTML or text
             if (html != null && !html.isEmpty() && Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN) {
                 ClipData clip = ClipData.newHtmlText("html", text, html);
                 clipboardManager.setPrimaryClip(clip);
@@ -323,9 +321,13 @@ public class ClipboardChannelHandler implements MethodChannel.MethodCallHandler,
             FileOutputStream out = new FileOutputStream(imageFile);
             bitmap.compress(Bitmap.CompressFormat.PNG, 100, out);
             out.close();
-            
-            // Use file URI - for production, configure FileProvider for Android 7.0+
-            return Uri.fromFile(imageFile);
+
+            // Use FileProvider for N+
+            return FileProvider.getUriForFile(
+                context,
+                context.getPackageName() + ".provider",
+                imageFile
+            );
         } catch (Exception e) {
             return null;
         }
@@ -419,3 +421,4 @@ public class ClipboardChannelHandler implements MethodChannel.MethodCallHandler,
         }
     }
 }
+

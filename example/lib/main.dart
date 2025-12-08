@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
 import 'dart:ui' as ui;
+import 'dart:io' show Platform;
 
 void main() {
   runApp(MyApp());
@@ -35,7 +36,7 @@ class _HomePageState extends State<HomePage> {
   String pasteValue = '';
   String clipboardStatus = 'Ready';
   bool isMonitoring = false;
-  Map<String, dynamic> debugInfo = {};
+  Map<String, dynamic> debugInfo = {'info': 'Tap "Load Debug Info" to fetch'};
   List<String> clipboardHistory = [];
   Uint8List? selectedImageBytes;
   Uint8List? pastedImageBytes;
@@ -44,7 +45,6 @@ class _HomePageState extends State<HomePage> {
   @override
   void initState() {
     super.initState();
-    _loadDebugInfo();
     _setupClipboardListener();
   }
 
@@ -241,12 +241,17 @@ class _HomePageState extends State<HomePage> {
 
   Future<void> _pickImage() async {
     try {
-      final XFile? image = await _imagePicker.pickImage(
-        source: ImageSource.gallery,
-        imageQuality: 100,
-        requestFullMetadata: true, // Need metadata to handle format conversion
-      );
-      if (image != null) {
+      // On macOS, use file picker directly if image_picker doesn't work
+      if (Platform.isMacOS) {
+        final XFile? image = await _imagePicker.pickImage(
+          source: ImageSource.gallery,
+          imageQuality: 100,
+        );
+        if (image == null) {
+          // User cancelled or no file selected
+          return;
+        }
+
         try {
           // Read the image file
           final bytes = await image.readAsBytes();
@@ -275,13 +280,57 @@ class _HomePageState extends State<HomePage> {
             selectedImageBytes = convertedBytes;
             clipboardStatus = 'Image selected (${convertedBytes.length} bytes)';
           });
+          _showSnackBar('Image selected successfully');
         } catch (e) {
           _showSnackBar(
-              'Failed to read image: $e\n\nTip: The image might be in HEIC format. Try converting it to JPEG/PNG first.');
+              'Failed to read image: $e\n\nTip: The image might be in an unsupported format. Try using JPEG or PNG images.');
+        }
+      } else {
+        // iOS/Android implementation
+        final XFile? image = await _imagePicker.pickImage(
+          source: ImageSource.gallery,
+          imageQuality: 100,
+          requestFullMetadata:
+              true, // Need metadata to handle format conversion
+        );
+        if (image != null) {
+          try {
+            // Read the image file
+            final bytes = await image.readAsBytes();
+
+            // Convert HEIC/HEIF to PNG if needed
+            Uint8List convertedBytes = bytes;
+            try {
+              // Try to decode and re-encode as PNG to handle HEIC format
+              final codec = await ui.instantiateImageCodec(bytes);
+              final frame = await codec.getNextFrame();
+              final uiImage = frame.image;
+
+              // Convert to PNG format
+              final byteData =
+                  await uiImage.toByteData(format: ui.ImageByteFormat.png);
+              if (byteData != null) {
+                convertedBytes = byteData.buffer.asUint8List();
+              }
+              uiImage.dispose();
+            } catch (e) {
+              // If conversion fails, use original bytes (might already be PNG/JPEG)
+              // This handles cases where the image is already in a compatible format
+            }
+
+            setState(() {
+              selectedImageBytes = convertedBytes;
+              clipboardStatus =
+                  'Image selected (${convertedBytes.length} bytes)';
+            });
+          } catch (e) {
+            _showSnackBar(
+                'Failed to read image: $e\n\nTip: The image might be in HEIC format. Try converting it to JPEG/PNG first.');
+          }
         }
       }
     } on PlatformException catch (e) {
-      String errorMsg = 'Failed to pick image: ${e.message}';
+      String errorMsg = 'Failed to pick image: ${e.message ?? 'Unknown error'}';
       if (e.code == 'invalid_image' ||
           e.message?.contains('NSItemProviderErrorDomain') == true ||
           e.message?.contains('public.jpeg') == true ||
@@ -299,6 +348,13 @@ class _HomePageState extends State<HomePage> {
   }
 
   Future<void> _pickImageFromCamera() async {
+    // Camera is not well supported on macOS desktop
+    if (Platform.isMacOS) {
+      _showSnackBar(
+          'Camera is not available on macOS desktop.\n\nPlease use the Gallery button to select an image from your files.');
+      return;
+    }
+
     try {
       final XFile? image = await _imagePicker.pickImage(
         source: ImageSource.camera,
@@ -334,16 +390,25 @@ class _HomePageState extends State<HomePage> {
         }
       }
     } on PlatformException catch (e) {
-      String errorMsg = 'Failed to capture image: ${e.message}';
+      String errorMsg =
+          'Failed to capture image: ${e.message ?? 'Unknown error'}';
       if (e.code == 'camera_access_denied') {
         errorMsg += '\n\nPlease grant camera permission in Settings.';
       } else if (e.code == 'camera_unavailable') {
         errorMsg +=
             '\n\nCamera is not available (simulator doesn\'t have a camera).';
+      } else if (e.message?.contains('cameraDelegate') == true) {
+        errorMsg +=
+            '\n\nCamera functionality requires additional setup on this platform.';
       }
       _showSnackBar(errorMsg);
     } catch (e) {
-      _showSnackBar('Failed to capture image: $e');
+      String errorMsg = 'Failed to capture image: $e';
+      if (e.toString().contains('cameraDelegate')) {
+        errorMsg +=
+            '\n\nCamera functionality is not available on macOS desktop. Please use the Gallery button instead.';
+      }
+      _showSnackBar(errorMsg);
     }
   }
 
@@ -965,7 +1030,17 @@ class _HomePageState extends State<HomePage> {
                           TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                     ),
                     SizedBox(height: 8),
+                    Row(
+                      children: [
+                        ElevatedButton(
+                          onPressed: _loadDebugInfo,
+                          child: Text('Load Debug Info'),
+                        ),
+                      ],
+                    ),
+                    SizedBox(height: 8),
                     Container(
+                      width: double.infinity,
                       padding: EdgeInsets.all(12),
                       decoration: BoxDecoration(
                         color: Colors.grey[100],
