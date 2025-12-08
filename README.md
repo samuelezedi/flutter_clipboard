@@ -1,10 +1,19 @@
 # Enhanced Flutter Clipboard
 
-[![pub package](https://img.shields.io/badge/2.0.2-brightgreen)](https://github.com/samuelezedi/flutter_clipboard)
+[![pub package](https://img.shields.io/badge/3.0.0-brightgreen)](https://github.com/samuelezedi/flutter_clipboard)
 
 A powerful Flutter package that provides comprehensive clipboard functionality with **true** rich text support, **native** clipboard monitoring, and advanced features. Built with platform channels for maximum performance and reliability.
 
 [GitHub](https://github.com/samuelezedi/flutter_clipboard)
+
+## Screenshots
+
+<div align="center">
+  <img src="screenshots/sc1.png" alt="Screenshot 1" width="200"/>
+  <img src="screenshots/sc2.png" alt="Screenshot 2" width="200"/>
+  <img src="screenshots/sc3.png" alt="Screenshot 3" width="200"/>
+  <img src="screenshots/sc4.png" alt="Screenshot 4" width="200"/>
+</div>
 
 ## Features
 
@@ -28,7 +37,7 @@ Add this to your package's `pubspec.yaml` file:
 
 ```yaml
 dependencies:
-  clipboard: ^2.0.2
+  clipboard: ^3.0.0
 ```
 
 ## Platform Setup

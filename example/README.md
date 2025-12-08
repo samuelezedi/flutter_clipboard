@@ -13,7 +13,7 @@ This example app demonstrates all features of the Enhanced Flutter Clipboard pac
 - ✅ Utility methods (hasData, isEmpty, getContentType, etc.)
 - ✅ Debug information
 
-### New Image Features (v2.0.2)
+### New Image Features (v3.0.0)
 - ✅ **Image Selection**: Pick images from gallery
 - ✅ **Image Copy**: Copy images to clipboard
 - ✅ **Image Paste**: Paste images from clipboard

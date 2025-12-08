@@ -1,6 +1,6 @@
 name: clipboard
 description: A powerful Flutter package that provides clipboard functionality with rich text support, other formats, monitoring, and advanced features.
-version: 2.0.2
+version: 3.0.0
 homepage: https://github.com/samuelezedi/flutter_clipboard
 
 environment:

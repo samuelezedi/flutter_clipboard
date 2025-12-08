@@ -1,7 +1,6 @@
 library clipboard;
 
 import 'dart:async';
-import 'dart:typed_data';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 
@@ -357,9 +356,9 @@ class FlutterClipboard {
         return Uint8List.fromList(bytes.cast<int>());
       }
       return null;
-    } on PlatformException catch (e) {
+    } on PlatformException {
       return null;
-    } catch (e) {
+    } catch (_) {
       return null;
     }
   }
