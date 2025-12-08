@@ -37,7 +37,7 @@ Add this to your package's `pubspec.yaml` file:
 
 ```yaml
 dependencies:
-  clipboard: ^3.0.0
+  clipboard: ^3.0.5
 ```
 
 ## Platform Setup
