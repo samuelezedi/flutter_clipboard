@@ -1,3 +1,11 @@
+## 3.0.5
+
+* **Web Clipboard Fixes**: Added full web support for copy/paste of text, rich text (HTML), and images using the browser Clipboard API with conditional imports.
+* **Web Image Copy/Paste**: Implemented web-side image handling with `ClipboardItem`/`navigator.clipboard` for copy and `read`/`getType` for paste.
+* **Web Text/Rich Text Paste**: Added `readText` and HTML extraction via `read()` + `getType('text/html')`.
+* **Example App**: Updated to avoid early clipboard reads; paste dialogs no longer show on launch.
+* **Lint/Build**: Resolved analyzer issues after web additions.
+
 ## 3.0.0
 
 * **Major Release**: Complete rewrite with platform channel support for true multi-format clipboard
