@@ -1,23 +1,26 @@
 # Enhanced Flutter Clipboard
 
-[![pub package](https://img.shields.io/badge/2.0.0-brightgreen)](https://github.com/samuelezedi/flutter_clipboard)
+[![pub package](https://img.shields.io/badge/2.0.2-brightgreen)](https://github.com/samuelezedi/flutter_clipboard)
 
-A powerful Flutter package that provides comprehensive clipboard functionality with rich text support, monitoring, and advanced features.
+A powerful Flutter package that provides comprehensive clipboard functionality with **true** rich text support, **native** clipboard monitoring, and advanced features. Built with platform channels for maximum performance and reliability.
 
 [GitHub](https://github.com/samuelezedi/flutter_clipboard)
 
 ## Features
 
 - ✅ **Basic Copy/Paste**: Simple text copying and pasting
-- ✅ **Rich Text Support**: Copy and paste HTML-formatted text
-- ✅ **Multiple Formats**: Copy multiple data formats simultaneously
-- ✅ **Clipboard Monitoring**: Real-time clipboard change detection
-- ✅ **Error Handling**: Comprehensive error handling with custom exceptions
+- ✅ **True Rich Text Support**: Native HTML clipboard support via platform channels
+- ✅ **Image Support**: Copy and paste images to/from clipboard (PNG format)
+- ✅ **Multiple Formats**: Copy multiple data formats simultaneously (text, HTML, images)
+- ✅ **Native Clipboard Monitoring**: Real-time clipboard change detection using platform APIs
+- ✅ **Error Handling**: Comprehensive error handling with custom exceptions and error codes
 - ✅ **Utility Methods**: Check clipboard status, size, and content type
 - ✅ **Callback Support**: Success and error callbacks for operations
 - ✅ **Debug Information**: Get detailed clipboard debugging info
-- ✅ **Cross-Platform**: Works on Android, iOS, and Web
+- ✅ **Cross-Platform**: Works on Android, iOS, and Web with graceful fallbacks
 - ✅ **Null Safety**: Full null safety support
+- ✅ **Memory Safe**: Proper listener management with cleanup mechanisms
+- ✅ **Production Ready**: Battle-tested with comprehensive error handling
 
 ## Installation
 
@@ -25,8 +28,19 @@ Add this to your package's `pubspec.yaml` file:
 
 ```yaml
 dependencies:
-  clipboard: ^2.0.0
+  clipboard: ^2.0.2
 ```
+
+## Platform Setup
+
+### Android
+The package uses platform channels for enhanced features. No additional setup required - the package automatically falls back to Flutter's built-in Clipboard API if platform channels are unavailable.
+
+### iOS
+No additional setup required. The package automatically handles platform channel registration.
+
+### Web
+Fully supported with automatic fallback to browser Clipboard API.
 
 ## Basic Usage
 
@@ -90,8 +104,34 @@ print('HTML: ${data.html}');
 await FlutterClipboard.copyMultiple({
   'text/plain': 'Hello World',
   'text/html': '<b>Hello World</b>',
+  'image/png': imageBytes, // Uint8List of PNG image
   'custom/format': 'Custom data',
 });
+```
+
+### Image Copy/Paste
+
+```dart
+import 'dart:typed_data';
+import 'package:flutter/services.dart';
+
+// Copy image to clipboard
+final ByteData imageData = await rootBundle.load('assets/image.png');
+final Uint8List imageBytes = imageData.buffer.asUint8List();
+await FlutterClipboard.copyImage(imageBytes);
+
+// Paste image from clipboard
+final Uint8List? pastedImage = await FlutterClipboard.pasteImage();
+if (pastedImage != null) {
+  // Use the image bytes (e.g., display in Image.memory)
+  Image.memory(pastedImage);
+}
+
+// Images are also included in pasteRichText()
+final data = await FlutterClipboard.pasteRichText();
+if (data.hasImage) {
+  print('Clipboard contains image: ${data.imageBytes?.length} bytes');
+}
 ```
 
 ### Callback Support
@@ -114,21 +154,26 @@ await FlutterClipboard.copyWithCallback(
 ### Clipboard Monitoring
 
 ```dart
-// Add clipboard change listener
+// Add clipboard change listener (returns cleanup function)
 void onClipboardChanged(EnhancedClipboardData data) {
   print('Clipboard changed: ${data.text}');
 }
 
-FlutterClipboard.addListener(onClipboardChanged);
+// Add listener and get cleanup function
+final removeListener = FlutterClipboard.addListener(onClipboardChanged);
 
-// Start automatic monitoring
-FlutterClipboard.startMonitoring(interval: Duration(milliseconds: 500));
+// Start native monitoring (uses platform APIs when available)
+await FlutterClipboard.startMonitoring(interval: Duration(milliseconds: 500));
 
 // Stop monitoring
-FlutterClipboard.stopMonitoring();
+await FlutterClipboard.stopMonitoring();
 
-// Remove listener
+// Remove listener (or use the returned cleanup function)
 FlutterClipboard.removeListener(onClipboardChanged);
+// Or: removeListener();
+
+// Remove all listeners at once
+FlutterClipboard.removeAllListeners();
 ```
 
 ### Utility Methods
@@ -179,8 +224,8 @@ EnhancedClipboardData data = await FlutterClipboard.pasteRichText();
 // Check content types
 if (data.hasText) print('Has text: ${data.text}');
 if (data.hasHtml) print('Has HTML: ${data.html}');
-if (data.hasImage) print('Has image data');
-if (data.hasFiles) print('Has file paths');
+if (data.hasImage) print('Has image: ${data.imageBytes?.length} bytes');
+if (data.hasFiles) print('Has file paths: ${data.filePaths}');
 
 // Check if completely empty
 if (data.isEmpty) print('Clipboard is empty');
@@ -261,14 +306,16 @@ Map<String, dynamic> info = await FlutterClipboard.getDebugInfo();
 
 I originally built this package 4 years ago for basic clipboard functionality. Over time, I realized developers needed more advanced features:
 
-- **Rich Text Support**: Many apps need to preserve formatting
-- **Monitoring**: Real-time clipboard change detection
-- **Better Error Handling**: Proper exceptions instead of generic errors
-- **Utility Methods**: Check clipboard status and content type
+- **True Rich Text Support**: Native HTML clipboard support via platform channels (not just in-memory storage)
+- **Native Monitoring**: Real-time clipboard change detection using platform APIs (Android clipboard listeners, iOS notifications)
+- **Better Error Handling**: Proper exceptions with error codes for better debugging
+- **Utility Methods**: Check clipboard status, content type, and data size
 - **Debug Support**: Comprehensive debugging information
-- **Modern API**: Updated to latest Dart/Flutter standards
+- **Memory Safe**: Proper listener management prevents memory leaks
+- **Production Ready**: Graceful fallbacks ensure reliability across all platforms
+- **Modern API**: Updated to latest Dart/Flutter standards with platform channel support
 
-This enhanced version maintains backward compatibility while adding powerful new features that modern Flutter apps need.
+This enhanced version maintains backward compatibility while adding powerful new features that modern Flutter apps need. The package now uses platform channels for true multi-format support and native clipboard monitoring, with automatic fallbacks to Flutter's built-in Clipboard API when needed.
 
 ## Contributing
 
@@ -281,6 +328,5 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 ## Follow Me
 
 - [GitHub](https://github.com/samuelezedi)
-- [Twitter](https://twitter.com/samuelezedi)
 - [Medium](https://medium.com/@samuelezedi)
-- [Instagram](https://instagram.com/samuelezedi)
+- [Instagram](https://instagram.com/_zedempire)

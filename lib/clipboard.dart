@@ -1,6 +1,8 @@
 library clipboard;
 
 import 'dart:async';
+import 'dart:typed_data';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 
 /// Custom exception for clipboard operations
@@ -19,7 +21,7 @@ class ClipboardException implements Exception {
 class EnhancedClipboardData {
   final String? text;
   final String? html;
-  final List<int>? imageBytes;
+  final Uint8List? imageBytes;
   final List<String>? filePaths;
   final Map<String, dynamic>? customData;
   final DateTime? timestamp;
@@ -32,6 +34,43 @@ class EnhancedClipboardData {
     this.customData,
     DateTime? timestamp,
   }) : timestamp = timestamp ?? DateTime.now();
+
+  /// Factory constructor from platform channel map
+  factory EnhancedClipboardData.fromMap(Map<dynamic, dynamic> map) {
+    Uint8List? imageBytes;
+    if (map['imageBytes'] != null) {
+      final List<dynamic> bytes = map['imageBytes'] as List<dynamic>;
+      imageBytes = Uint8List.fromList(bytes.cast<int>());
+    }
+
+    List<String>? filePaths;
+    if (map['filePaths'] != null) {
+      filePaths = List<String>.from(map['filePaths'] as List);
+    }
+
+    return EnhancedClipboardData(
+      text: map['text'] as String?,
+      html: map['html'] as String?,
+      imageBytes: imageBytes,
+      filePaths: filePaths,
+      customData: map['customData'] as Map<String, dynamic>?,
+      timestamp: map['timestamp'] != null
+          ? DateTime.fromMillisecondsSinceEpoch(map['timestamp'] as int)
+          : null,
+    );
+  }
+
+  /// Convert to map for platform channel
+  Map<String, dynamic> toMap() {
+    return {
+      'text': text,
+      'html': html,
+      'imageBytes': imageBytes?.toList(),
+      'filePaths': filePaths,
+      'customData': customData,
+      'timestamp': timestamp?.millisecondsSinceEpoch,
+    };
+  }
 
   bool get isEmpty =>
       text?.isEmpty != false &&
@@ -50,9 +89,15 @@ enum ClipboardContentType { text, html, image, files, mixed, empty, unknown }
 
 /// A Flutter Clipboard Plugin with enhanced functionality.
 class FlutterClipboard {
-  static final List<Function(EnhancedClipboardData)> _listeners = [];
-  static Timer? _monitoringTimer;
+  static final MethodChannel _channel =
+      MethodChannel('net.cubiclab.clipboard/methods');
+  static final EventChannel _eventChannel =
+      EventChannel('net.cubiclab.clipboard/events');
+
+  static final Set<Function(EnhancedClipboardData)> _listeners = {};
+  static StreamSubscription<dynamic>? _clipboardChangeSubscription;
   static EnhancedClipboardData? _lastData;
+  static bool _isMonitoring = false;
 
   // Private constructor to prevent instantiation
   FlutterClipboard._();
@@ -64,14 +109,30 @@ class FlutterClipboard {
       throw ClipboardException('Text cannot be empty', 'EMPTY_TEXT');
     }
     try {
-      await Clipboard.setData(ClipboardData(text: text));
-      _notifyListeners(EnhancedClipboardData(text: text));
+      // Use platform channel for better cross-platform support
+      final result = await _channel.invokeMethod<bool>('copy', {'text': text});
+      if (result != true) {
+        throw ClipboardException('Copy operation failed', 'COPY_ERROR');
+      }
+      final data = EnhancedClipboardData(text: text);
+      _lastData = data;
+      _notifyListeners(data);
+    } on PlatformException catch (e) {
+      throw ClipboardException('Failed to copy text: ${e.message}', 'COPY_ERROR');
     } catch (e) {
-      throw ClipboardException('Failed to copy text: $e', 'COPY_ERROR');
+      // Fallback to Flutter's Clipboard API
+      try {
+        await Clipboard.setData(ClipboardData(text: text));
+        final data = EnhancedClipboardData(text: text);
+        _lastData = data;
+        _notifyListeners(data);
+      } catch (fallbackError) {
+        throw ClipboardException('Failed to copy text: $e', 'COPY_ERROR');
+      }
     }
   }
 
-  /// Copy rich text to clipboard
+  /// Copy rich text to clipboard with HTML support
   static Future<void> copyRichText({required String text, String? html}) async {
     if (text.isEmpty && html?.isEmpty != false) {
       throw ClipboardException(
@@ -81,17 +142,36 @@ class FlutterClipboard {
     }
 
     try {
-      // Flutter's ClipboardData only supports text, not html directly
-      // We'll store the text and handle html separately
-      await Clipboard.setData(
-        ClipboardData(text: text.isNotEmpty ? text : html ?? ''),
-      );
-      _notifyListeners(EnhancedClipboardData(text: text, html: html));
-    } catch (e) {
+      final result = await _channel.invokeMethod<bool>('copyRichText', {
+        'text': text,
+        'html': html,
+      });
+      if (result != true) {
+        throw ClipboardException('Copy rich text operation failed', 'COPY_RICH_ERROR');
+      }
+      final data = EnhancedClipboardData(text: text, html: html);
+      _lastData = data;
+      _notifyListeners(data);
+    } on PlatformException catch (e) {
       throw ClipboardException(
-        'Failed to copy rich text: $e',
+        'Failed to copy rich text: ${e.message}',
         'COPY_RICH_ERROR',
       );
+    } catch (e) {
+      // Fallback to Flutter's Clipboard API
+      try {
+        await Clipboard.setData(
+          ClipboardData(text: text.isNotEmpty ? text : html ?? ''),
+        );
+        final data = EnhancedClipboardData(text: text, html: html);
+        _lastData = data;
+        _notifyListeners(data);
+      } catch (fallbackError) {
+        throw ClipboardException(
+          'Failed to copy rich text: $e',
+          'COPY_RICH_ERROR',
+        );
+      }
     }
   }
 
@@ -105,25 +185,83 @@ class FlutterClipboard {
     }
 
     try {
+      // Convert image bytes to list if present
+      Map<String, dynamic> convertedFormats = Map<String, dynamic>.from(formats);
+      if (formats['image/png'] is Uint8List) {
+        convertedFormats['image/png'] = (formats['image/png'] as Uint8List).toList();
+      }
+
+      final result = await _channel.invokeMethod<bool>(
+        'copyMultiple',
+        {'formats': convertedFormats},
+      );
+      if (result != true) {
+        throw ClipboardException('Copy multiple formats operation failed', 'COPY_MULTIPLE_ERROR');
+      }
+
       final text = formats['text/plain']?.toString();
       final html = formats['text/html']?.toString();
+      Uint8List? imageBytes;
+      if (formats['image/png'] is Uint8List) {
+        imageBytes = formats['image/png'] as Uint8List;
+      } else if (formats['image/png'] is List<int>) {
+        imageBytes = Uint8List.fromList(formats['image/png'] as List<int>);
+      }
 
-      await Clipboard.setData(
-        ClipboardData(text: text ?? ''),
-      );
-
-      _notifyListeners(EnhancedClipboardData(
+      final data = EnhancedClipboardData(
         text: text,
         html: html,
-        imageBytes:
-            formats['image/png'] is List<int> ? formats['image/png'] : null,
+        imageBytes: imageBytes,
         customData: formats,
-      ));
-    } catch (e) {
+      );
+      _lastData = data;
+      _notifyListeners(data);
+    } on PlatformException catch (e) {
       throw ClipboardException(
-        'Failed to copy multiple formats: $e',
+        'Failed to copy multiple formats: ${e.message}',
         'COPY_MULTIPLE_ERROR',
       );
+    } catch (e) {
+      // Fallback: copy text only
+      try {
+        final text = formats['text/plain']?.toString() ?? '';
+        await Clipboard.setData(ClipboardData(text: text));
+        final data = EnhancedClipboardData(text: text, customData: formats);
+        _lastData = data;
+        _notifyListeners(data);
+      } catch (fallbackError) {
+        throw ClipboardException(
+          'Failed to copy multiple formats: $e',
+          'COPY_MULTIPLE_ERROR',
+        );
+      }
+    }
+  }
+
+  /// Copy image to clipboard
+  /// [imageBytes] should be PNG format bytes
+  static Future<void> copyImage(Uint8List imageBytes) async {
+    if (imageBytes.isEmpty) {
+      throw ClipboardException('Image bytes cannot be empty', 'EMPTY_IMAGE');
+    }
+    try {
+      final result = await _channel.invokeMethod<bool>(
+        'copyImage',
+        {'imageBytes': imageBytes.toList()},
+      );
+      if (result != true) {
+        throw ClipboardException('Copy image operation failed', 'COPY_IMAGE_ERROR');
+      }
+      final data = EnhancedClipboardData(imageBytes: imageBytes);
+      _lastData = data;
+      _notifyListeners(data);
+    } on PlatformException catch (e) {
+      throw ClipboardException(
+        'Failed to copy image: ${e.message}',
+        'COPY_IMAGE_ERROR',
+      );
+    } catch (e) {
+      throw ClipboardException('Failed to copy image: $e', 'COPY_IMAGE_ERROR');
     }
   }
 
@@ -146,8 +284,21 @@ class FlutterClipboard {
   /// Paste text from clipboard
   static Future<String> paste() async {
     try {
+      final result = await _channel.invokeMethod<Map<dynamic, dynamic>>('paste');
+      if (result != null && result['text'] != null) {
+        return result['text'] as String;
+      }
+      // Fallback to Flutter's Clipboard API
       final data = await Clipboard.getData('text/plain');
       return data?.text?.toString() ?? "";
+    } on PlatformException catch (e) {
+      // Fallback to Flutter's Clipboard API
+      try {
+        final data = await Clipboard.getData('text/plain');
+        return data?.text?.toString() ?? "";
+      } catch (fallbackError) {
+        throw ClipboardException('Failed to paste text: ${e.message}', 'PASTE_ERROR');
+      }
     } catch (e) {
       throw ClipboardException('Failed to paste text: $e', 'PASTE_ERROR');
     }
@@ -156,13 +307,38 @@ class FlutterClipboard {
   /// Paste rich text from clipboard
   static Future<EnhancedClipboardData> pasteRichText() async {
     try {
+      final result = await _channel.invokeMethod<Map<dynamic, dynamic>>('pasteRichText');
+      if (result != null) {
+        final data = EnhancedClipboardData.fromMap(result);
+        _lastData = data;
+        return data;
+      }
+      // Fallback to Flutter's Clipboard API
       final data = await Clipboard.getData('text/plain');
       final htmlData = await Clipboard.getData('text/html');
-
-      return EnhancedClipboardData(
+      final clipboardData = EnhancedClipboardData(
         text: data?.text,
         html: htmlData?.text,
       );
+      _lastData = clipboardData;
+      return clipboardData;
+    } on PlatformException catch (e) {
+      // Fallback to Flutter's Clipboard API
+      try {
+        final data = await Clipboard.getData('text/plain');
+        final htmlData = await Clipboard.getData('text/html');
+        final clipboardData = EnhancedClipboardData(
+          text: data?.text,
+          html: htmlData?.text,
+        );
+        _lastData = clipboardData;
+        return clipboardData;
+      } catch (fallbackError) {
+        throw ClipboardException(
+          'Failed to paste rich text: ${e.message}',
+          'PASTE_RICH_ERROR',
+        );
+      }
     } catch (e) {
       throw ClipboardException(
         'Failed to paste rich text: $e',
@@ -171,14 +347,49 @@ class FlutterClipboard {
     }
   }
 
+  /// Paste image from clipboard
+  /// Returns the image bytes if available, null otherwise
+  static Future<Uint8List?> pasteImage() async {
+    try {
+      final result = await _channel.invokeMethod<Map<dynamic, dynamic>>('pasteImage');
+      if (result != null && result['imageBytes'] != null) {
+        final bytes = result['imageBytes'] as List<dynamic>;
+        return Uint8List.fromList(bytes.cast<int>());
+      }
+      return null;
+    } on PlatformException catch (e) {
+      return null;
+    } catch (e) {
+      return null;
+    }
+  }
+
   /// Get clipboard content type
   static Future<ClipboardContentType> getContentType() async {
     try {
+      final result = await _channel.invokeMethod<String>('getContentType');
+      if (result != null) {
+        switch (result) {
+          case 'text':
+            return ClipboardContentType.text;
+          case 'html':
+            return ClipboardContentType.html;
+          case 'image':
+            return ClipboardContentType.image;
+          case 'files':
+            return ClipboardContentType.files;
+          case 'mixed':
+            return ClipboardContentType.mixed;
+          case 'empty':
+            return ClipboardContentType.empty;
+          default:
+            return ClipboardContentType.unknown;
+        }
+      }
+      // Fallback
       final data = await Clipboard.getData('text/plain');
       final htmlData = await Clipboard.getData('text/html');
-
-      if (data?.text?.isNotEmpty == true &&
-          htmlData?.text?.isNotEmpty == true) {
+      if (data?.text?.isNotEmpty == true && htmlData?.text?.isNotEmpty == true) {
         return ClipboardContentType.mixed;
       } else if (data?.text?.isNotEmpty == true) {
         return ClipboardContentType.text;
@@ -195,6 +406,11 @@ class FlutterClipboard {
   /// Check if clipboard has content
   static Future<bool> hasData() async {
     try {
+      final result = await _channel.invokeMethod<bool>('hasData');
+      if (result != null) {
+        return result;
+      }
+      // Fallback
       final data = await Clipboard.getData('text/plain');
       return data?.text?.isNotEmpty == true;
     } catch (e) {
@@ -210,8 +426,21 @@ class FlutterClipboard {
   /// Clear clipboard
   static Future<void> clear() async {
     try {
-      await Clipboard.setData(const ClipboardData(text: ''));
-      _notifyListeners(EnhancedClipboardData());
+      final result = await _channel.invokeMethod<bool>('clear');
+      if (result != true) {
+        throw ClipboardException('Clear operation failed', 'CLEAR_ERROR');
+      }
+      _lastData = EnhancedClipboardData();
+      _notifyListeners(_lastData!);
+    } on PlatformException catch (e) {
+      // Fallback
+      try {
+        await Clipboard.setData(const ClipboardData(text: ''));
+        _lastData = EnhancedClipboardData();
+        _notifyListeners(_lastData!);
+      } catch (fallbackError) {
+        throw ClipboardException('Failed to clear clipboard: ${e.message}', 'CLEAR_ERROR');
+      }
     } catch (e) {
       throw ClipboardException('Failed to clear clipboard: $e', 'CLEAR_ERROR');
     }
@@ -220,6 +449,11 @@ class FlutterClipboard {
   /// Get clipboard data size (approximate)
   static Future<int> getDataSize() async {
     try {
+      final result = await _channel.invokeMethod<int>('getDataSize');
+      if (result != null) {
+        return result;
+      }
+      // Fallback
       final data = await Clipboard.getData('text/plain');
       return data?.text?.length ?? 0;
     } catch (e) {
@@ -233,8 +467,11 @@ class FlutterClipboard {
   }
 
   /// Add clipboard change listener
-  static void addListener(Function(EnhancedClipboardData) listener) {
+  /// Returns a function to remove the listener
+  static Function() addListener(Function(EnhancedClipboardData) listener) {
     _listeners.add(listener);
+    // Return a cleanup function
+    return () => removeListener(listener);
   }
 
   /// Remove clipboard change listener
@@ -242,16 +479,64 @@ class FlutterClipboard {
     _listeners.remove(listener);
   }
 
-  /// Start monitoring clipboard changes
-  static void startMonitoring({
+  /// Remove all listeners
+  static void removeAllListeners() {
+    _listeners.clear();
+  }
+
+  /// Start monitoring clipboard changes using native notifications
+  static Future<void> startMonitoring({
     Duration interval = const Duration(milliseconds: 500),
-  }) {
+  }) async {
+    if (_isMonitoring) {
+      return;
+    }
+
+    try {
+      // Try to use native clipboard change notifications
+      _clipboardChangeSubscription = _eventChannel
+          .receiveBroadcastStream()
+          .listen(
+            (dynamic event) {
+              try {
+                if (event is Map) {
+                  final data = EnhancedClipboardData.fromMap(event);
+                  if (_lastData?.text != data.text ||
+                      _lastData?.html != data.html ||
+                      _lastData?.imageBytes != data.imageBytes) {
+                    _lastData = data;
+                    _notifyListeners(data);
+                  }
+                }
+              } catch (e) {
+                // Ignore parsing errors
+              }
+            },
+            onError: (error) {
+              // If native monitoring fails, fall back to polling
+              _startPollingMonitoring(interval);
+            },
+          );
+
+      // Start native monitoring on platform
+      await _channel.invokeMethod<bool>('startMonitoring');
+      _isMonitoring = true;
+    } catch (e) {
+      // Fallback to polling if native monitoring is not available
+      _startPollingMonitoring(interval);
+    }
+  }
+
+  /// Internal method for polling-based monitoring (fallback)
+  static Timer? _monitoringTimer;
+  static void _startPollingMonitoring(Duration interval) {
     _monitoringTimer?.cancel();
     _monitoringTimer = Timer.periodic(interval, (timer) async {
       try {
         final currentData = await pasteRichText();
         if (_lastData?.text != currentData.text ||
-            _lastData?.html != currentData.html) {
+            _lastData?.html != currentData.html ||
+            _lastData?.imageBytes != currentData.imageBytes) {
           _lastData = currentData;
           _notifyListeners(currentData);
         }
@@ -259,12 +544,21 @@ class FlutterClipboard {
         // Ignore monitoring errors
       }
     });
+    _isMonitoring = true;
   }
 
   /// Stop monitoring clipboard changes
-  static void stopMonitoring() {
+  static Future<void> stopMonitoring() async {
+    _isMonitoring = false;
     _monitoringTimer?.cancel();
     _monitoringTimer = null;
+    await _clipboardChangeSubscription?.cancel();
+    _clipboardChangeSubscription = null;
+    try {
+      await _channel.invokeMethod<bool>('stopMonitoring');
+    } catch (e) {
+      // Ignore errors when stopping
+    }
   }
 
   /// Get debug information
@@ -279,14 +573,15 @@ class FlutterClipboard {
         'contentType': contentType.toString(),
         'dataSize': dataSize,
         'listenersCount': _listeners.length,
-        'isMonitoring': _monitoringTimer?.isActive ?? false,
+        'isMonitoring': _isMonitoring,
         'lastData': _lastData?.text,
+        'hasNativeMonitoring': _clipboardChangeSubscription != null,
       };
     } catch (e) {
       return {
         'error': e.toString(),
         'listenersCount': _listeners.length,
-        'isMonitoring': _monitoringTimer?.isActive ?? false,
+        'isMonitoring': _isMonitoring,
       };
     }
   }
@@ -322,11 +617,15 @@ class FlutterClipboard {
 
   // Private helper methods
   static void _notifyListeners(EnhancedClipboardData data) {
-    for (final listener in _listeners) {
+    final listeners = List<Function(EnhancedClipboardData)>.from(_listeners);
+    for (final listener in listeners) {
       try {
         listener(data);
       } catch (e) {
-        // Ignore listener errors
+        // Ignore listener errors but log in debug mode
+        if (kDebugMode) {
+          print('Clipboard listener error: $e');
+        }
       }
     }
   }

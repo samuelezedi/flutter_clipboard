@@ -30,6 +30,7 @@ dependencies:
   cupertino_icons: ^1.0.2
   clipboard:
     path: ../
+  image_picker: ^1.0.0
 
 dev_dependencies:
   flutter_test:

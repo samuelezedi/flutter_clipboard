@@ -1,40 +1,31 @@
-#import "AppDelegate.h"
-#import "GeneratedPluginRegistrant.h"
+#import "ClipboardChannelHandler.h"
 
-@implementation AppDelegate {
-    id _clipboardChangeObserver;
+@implementation ClipboardChannelHandler {
+    FlutterEventSink _eventSink;
+    NSObject<NSObjectProtocol> *_clipboardChangeObserver;
 }
 
-- (BOOL)application:(UIApplication *)application
-    didFinishLaunchingWithOptions:(NSDictionary *)launchOptions {
-  [GeneratedPluginRegistrant registerWithRegistry:self];
-  
-  // Register clipboard channels using registrar
-  id<FlutterPluginRegistrar> registrar = [self registrarForPlugin:@"ClipboardPlugin"];
-  id<FlutterBinaryMessenger> messenger = [registrar messenger];
-  
-  // Method channel
-  _clipboardMethodChannel = [FlutterMethodChannel
-      methodChannelWithName:@"net.cubiclab.clipboard/methods"
-            binaryMessenger:messenger];
-  [_clipboardMethodChannel setMethodCallHandler:^(FlutterMethodCall* call, FlutterResult result) {
-    [self handleClipboardMethodCall:call result:result];
-  }];
-  
-  // Event channel
-  _clipboardEventChannel = [FlutterEventChannel
-      eventChannelWithName:@"net.cubiclab.clipboard/events"
-           binaryMessenger:messenger];
-  [_clipboardEventChannel setStreamHandler:self];
-  
-  return [super application:application didFinishLaunchingWithOptions:launchOptions];
++ (void)registerWithRegistrar:(NSObject<FlutterPluginRegistrar>*)registrar {
+    ClipboardChannelHandler* instance = [[ClipboardChannelHandler alloc] init];
+    
+    FlutterMethodChannel* methodChannel = [FlutterMethodChannel
+        methodChannelWithName:@"net.cubiclab.clipboard/methods"
+              binaryMessenger:[registrar messenger]];
+    [registrar addMethodCallDelegate:instance channel:methodChannel];
+    
+    FlutterEventChannel* eventChannel = [FlutterEventChannel
+        eventChannelWithName:@"net.cubiclab.clipboard/events"
+             binaryMessenger:[registrar messenger]];
+    [eventChannel setStreamHandler:instance];
 }
 
-- (void)handleClipboardMethodCall:(FlutterMethodCall*)call result:(FlutterResult)result {
+- (void)handleMethodCall:(FlutterMethodCall*)call result:(FlutterResult)result {
     if ([@"copy" isEqualToString:call.method]) {
         NSString* text = call.arguments[@"text"];
         if (text == nil || text.length == 0) {
-            result([FlutterError errorWithCode:@"EMPTY_TEXT" message:@"Text cannot be empty" details:nil]);
+            result([FlutterError errorWithCode:@"EMPTY_TEXT"
+                                       message:@"Text cannot be empty"
+                                       details:nil]);
             return;
         }
         [UIPasteboard generalPasteboard].string = text;
@@ -46,7 +37,9 @@
         NSString* text = call.arguments[@"text"] ?: @"";
         NSString* html = call.arguments[@"html"];
         if (text.length == 0 && (html == nil || html.length == 0)) {
-            result([FlutterError errorWithCode:@"EMPTY_CONTENT" message:@"Either text or html must be provided" details:nil]);
+            result([FlutterError errorWithCode:@"EMPTY_CONTENT"
+                                       message:@"Either text or html must be provided"
+                                       details:nil]);
             return;
         }
         if (html != nil && html.length > 0) {
@@ -83,7 +76,9 @@
     } else if ([@"copyImage" isEqualToString:call.method]) {
         NSArray<NSNumber*>* imageBytes = call.arguments[@"imageBytes"];
         if (imageBytes == nil || imageBytes.count == 0) {
-            result([FlutterError errorWithCode:@"EMPTY_IMAGE" message:@"Image bytes cannot be empty" details:nil]);
+            result([FlutterError errorWithCode:@"EMPTY_IMAGE"
+                                       message:@"Image bytes cannot be empty"
+                                       details:nil]);
             return;
         }
         NSMutableData* data = [NSMutableData dataWithCapacity:imageBytes.count];
@@ -93,7 +88,9 @@
         }
         UIImage* image = [UIImage imageWithData:data];
         if (image == nil) {
-            result([FlutterError errorWithCode:@"INVALID_IMAGE" message:@"Failed to decode image" details:nil]);
+            result([FlutterError errorWithCode:@"INVALID_IMAGE"
+                                       message:@"Failed to decode image"
+                                       details:nil]);
             return;
         }
         [UIPasteboard generalPasteboard].image = image;
@@ -116,7 +113,9 @@
     } else if ([@"copyMultiple" isEqualToString:call.method]) {
         NSDictionary* formats = call.arguments[@"formats"];
         if (formats == nil || formats.count == 0) {
-            result([FlutterError errorWithCode:@"EMPTY_FORMATS" message:@"At least one format must be provided" details:nil]);
+            result([FlutterError errorWithCode:@"EMPTY_FORMATS"
+                                       message:@"At least one format must be provided"
+                                       details:nil]);
             return;
         }
         if (formats[@"image/png"] != nil) {
@@ -173,10 +172,10 @@
         NSString* text = [UIPasteboard generalPasteboard].string ?: @"";
         result(@(text.length));
     } else if ([@"startMonitoring" isEqualToString:call.method]) {
-        [self startClipboardMonitoring];
+        [self startMonitoring];
         result(@YES);
     } else if ([@"stopMonitoring" isEqualToString:call.method]) {
-        [self stopClipboardMonitoring];
+        [self stopMonitoring];
         result(@YES);
     } else {
         result(FlutterMethodNotImplemented);
@@ -185,17 +184,17 @@
 
 - (FlutterError*)onListenWithArguments:(id)arguments eventSink:(FlutterEventSink)events {
     _eventSink = events;
-    [self startClipboardMonitoring];
+    [self startMonitoring];
     return nil;
 }
 
 - (FlutterError*)onCancelWithArguments:(id)arguments {
     _eventSink = nil;
-    [self stopClipboardMonitoring];
+    [self stopMonitoring];
     return nil;
 }
 
-- (void)startClipboardMonitoring {
+- (void)startMonitoring {
     if (_clipboardChangeObserver != nil) {
         return;
     }
@@ -209,7 +208,7 @@
     }];
 }
 
-- (void)stopClipboardMonitoring {
+- (void)stopMonitoring {
     if (_clipboardChangeObserver != nil) {
         [[NSNotificationCenter defaultCenter] removeObserver:_clipboardChangeObserver];
         _clipboardChangeObserver = nil;
@@ -230,3 +229,4 @@
 }
 
 @end
+

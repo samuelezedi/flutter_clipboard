@@ -1,3 +1,18 @@
+## 2.0.2
+
+* **Major Improvements**: Complete rewrite with platform channel support for true multi-format clipboard
+* **Platform Channels**: Added native Android (Kotlin) and iOS (Swift) implementations for enhanced features
+* **True Rich Text Support**: HTML clipboard support now works via platform channels, not just in-memory storage
+* **Image Support**: Full image copy/paste support for PNG images on Android and iOS
+* **Native Clipboard Monitoring**: Real-time clipboard change detection using platform APIs (Android clipboard listeners)
+* **Memory Management**: Fixed listener memory leaks by using Set instead of List and adding cleanup mechanisms
+* **Enhanced Error Handling**: Improved error handling with graceful fallbacks to Flutter's Clipboard API
+* **Better Listener Management**: `addListener()` now returns a cleanup function, added `removeAllListeners()` method
+* **New Methods**: Added `copyImage()` and `pasteImage()` for direct image clipboard operations
+* **Production Ready**: Comprehensive fallback mechanisms ensure reliability across all platforms
+* **Documentation**: Updated README with accurate feature descriptions, image examples, and platform setup instructions
+* **Code Quality**: Improved code structure, better separation of concerns, and comprehensive error handling
+
 ## 2.0.0
 
 * **Major Release**: Fixed naming conflicts and improved API consistency

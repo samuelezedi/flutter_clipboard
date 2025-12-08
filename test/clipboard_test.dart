@@ -3,14 +3,16 @@ import 'package:clipboard/clipboard.dart';
 
 void main() {
   group('FlutterClipboard Tests', () {
-    setUp(() {
+    setUp(() async {
       // Clear any existing listeners before each test
-      FlutterClipboard.stopMonitoring();
+      await FlutterClipboard.stopMonitoring();
+      FlutterClipboard.removeAllListeners();
     });
 
-    tearDown(() {
+    tearDown(() async {
       // Clean up after each test
-      FlutterClipboard.stopMonitoring();
+      await FlutterClipboard.stopMonitoring();
+      FlutterClipboard.removeAllListeners();
     });
 
     group('Basic Copy/Paste Operations', () {
@@ -135,12 +137,11 @@ void main() {
     });
 
     group('Clipboard Monitoring', () {
-      test('addListener should add listener', () {
+      test('addListener should add listener and return cleanup function', () {
         void testListener(EnhancedClipboardData data) {}
-        FlutterClipboard.addListener(testListener);
-        // No way to directly test listener count, but should not throw
-        expect(
-            () => FlutterClipboard.addListener(testListener), returnsNormally);
+        final removeListener = FlutterClipboard.addListener(testListener);
+        expect(removeListener, isA<Function>());
+        expect(() => removeListener(), returnsNormally);
       });
 
       test('removeListener should remove listener', () {
@@ -150,21 +151,32 @@ void main() {
             returnsNormally);
       });
 
-      test('startMonitoring should start monitoring', () {
-        expect(() => FlutterClipboard.startMonitoring(), returnsNormally);
-        FlutterClipboard.stopMonitoring();
+      test('removeAllListeners should remove all listeners', () {
+        void testListener1(EnhancedClipboardData data) {}
+        void testListener2(EnhancedClipboardData data) {}
+        FlutterClipboard.addListener(testListener1);
+        FlutterClipboard.addListener(testListener2);
+        expect(() => FlutterClipboard.removeAllListeners(), returnsNormally);
       });
 
-      test('stopMonitoring should stop monitoring', () {
-        FlutterClipboard.startMonitoring();
+      test('startMonitoring should start monitoring', () async {
+        expect(() => FlutterClipboard.startMonitoring(), returnsNormally);
+        await FlutterClipboard.stopMonitoring();
+      });
+
+      test('stopMonitoring should stop monitoring', () async {
+        await FlutterClipboard.startMonitoring();
         expect(() => FlutterClipboard.stopMonitoring(), returnsNormally);
       });
     });
 
     group('Debug and Testing', () {
-      test('getDebugInfo should return map', () async {
+      test('getDebugInfo should return map with monitoring info', () async {
         final result = await FlutterClipboard.getDebugInfo();
         expect(result, isA<Map<String, dynamic>>());
+        expect(result.containsKey('listenersCount'), isTrue);
+        expect(result.containsKey('isMonitoring'), isTrue);
+        expect(result.containsKey('hasNativeMonitoring'), isTrue);
       });
 
       test('setMockData should set mock data', () async {
