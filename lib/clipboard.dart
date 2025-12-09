@@ -6,7 +6,7 @@ import 'package:flutter/services.dart';
 
 // Conditional imports for web support
 import 'src/clipboard_web_stub.dart'
-    if (dart.library.html) 'src/clipboard_web.dart';
+    if (dart.library.js) 'src/clipboard_web.dart';
 
 /// Custom exception for clipboard operations
 class ClipboardException implements Exception {

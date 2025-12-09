@@ -1,3 +1,9 @@
+## 3.0.6
+
+* **Web Package Migration**: Migrated from `dart:html` and `dart:js_util` to the new `package:web` package for better compatibility and modern JS interop.
+* **Conditional Import Update**: Changed conditional import from `dart.library.html` to `dart.library.js` to align with the new web package.
+* **JS Interop Improvements**: Updated web clipboard implementation to use modern JS interop APIs (`dart:js_interop`) for better type safety and performance.
+
 ## 3.0.5
 
 * **Web Clipboard Fixes**: Added full web support for copy/paste of text, rich text (HTML), and images using the browser Clipboard API with conditional imports.

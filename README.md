@@ -2,7 +2,7 @@
 
 [![pub package](https://img.shields.io/badge/3.0.0-brightgreen)](https://github.com/samuelezedi/flutter_clipboard)
 
-A super-power clipboard package for Flutter. Unlike basic clipboard solutions, this package delivers **true multi-format clipboard support** with native platform channel implementations. Copy and paste **text, HTML, and images** simultaneously, monitor clipboard changes in real-time with native listeners, and enjoy production-grade reliability with comprehensive error handling and memory-safe listener management. Built from the ground up with platform channels for maximum performance and cross-platform compatibility.
+A super-power clipboard package for Flutter, with text, HTML, and image support.
 
 [GitHub](https://github.com/samuelezedi/flutter_clipboard)
 
@@ -37,7 +37,7 @@ Add this to your package's `pubspec.yaml` file:
 
 ```yaml
 dependencies:
-  clipboard: ^3.0.5
+  clipboard: ^3.0.6
 ```
 
 ## Platform Setup

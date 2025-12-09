@@ -1,5 +1,6 @@
 import 'dart:typed_data';
 import 'package:clipboard/clipboard.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
@@ -241,8 +242,45 @@ class _HomePageState extends State<HomePage> {
 
   Future<void> _pickImage() async {
     try {
+      // Check for web platform first (Platform doesn't work on web)
+      if (kIsWeb) {
+        final XFile? image = await _imagePicker.pickImage(
+          source: ImageSource.gallery,
+          imageQuality: 100,
+        );
+        if (image == null) {
+          return;
+        }
+        try {
+          final bytes = await image.readAsBytes();
+          Uint8List convertedBytes = bytes;
+          try {
+            final codec = await ui.instantiateImageCodec(bytes);
+            final frame = await codec.getNextFrame();
+            final uiImage = frame.image;
+            final byteData =
+                await uiImage.toByteData(format: ui.ImageByteFormat.png);
+            if (byteData != null) {
+              convertedBytes = byteData.buffer.asUint8List();
+            }
+            uiImage.dispose();
+          } catch (e) {
+            // If conversion fails, use original bytes
+          }
+          setState(() {
+            selectedImageBytes = convertedBytes;
+            clipboardStatus = 'Image selected (${convertedBytes.length} bytes)';
+          });
+          _showSnackBar('Image selected successfully');
+        } catch (e) {
+          _showSnackBar(
+              'Failed to read image: $e\n\nTip: The image might be in an unsupported format. Try using JPEG or PNG images.');
+        }
+        return;
+      }
+
       // On macOS, use file picker directly if image_picker doesn't work
-      if (Platform.isMacOS) {
+      if (!kIsWeb && Platform.isMacOS) {
         final XFile? image = await _imagePicker.pickImage(
           source: ImageSource.gallery,
           imageQuality: 100,
@@ -285,7 +323,7 @@ class _HomePageState extends State<HomePage> {
           _showSnackBar(
               'Failed to read image: $e\n\nTip: The image might be in an unsupported format. Try using JPEG or PNG images.');
         }
-      } else {
+      } else if (!kIsWeb) {
         // iOS/Android implementation
         final XFile? image = await _imagePicker.pickImage(
           source: ImageSource.gallery,
@@ -348,8 +386,13 @@ class _HomePageState extends State<HomePage> {
   }
 
   Future<void> _pickImageFromCamera() async {
-    // Camera is not well supported on macOS desktop
-    if (Platform.isMacOS) {
+    // Camera is not well supported on web or macOS desktop
+    if (kIsWeb) {
+      _showSnackBar(
+          'Camera is not available on web platform.\n\nPlease use the Gallery button to select an image from your files.');
+      return;
+    }
+    if (!kIsWeb && Platform.isMacOS) {
       _showSnackBar(
           'Camera is not available on macOS desktop.\n\nPlease use the Gallery button to select an image from your files.');
       return;
