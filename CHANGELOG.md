@@ -1,3 +1,9 @@
+## 3.0.7
+
+* **Fixed JSString Type Issues**: Fixed type compatibility issues in web clipboard implementation by properly converting Dart Strings to JSString for type comparisons.
+* **Analyzer Fixes**: Resolved all static analysis warnings and errors for pub.dev compliance.
+* **Code Cleanup**: Removed unnecessary imports and fixed analysis configuration issues.
+
 ## 3.0.6
 
 * **Web Package Migration**: Migrated from `dart:html` and `dart:js_util` to the new `package:web` package for better compatibility and modern JS interop.

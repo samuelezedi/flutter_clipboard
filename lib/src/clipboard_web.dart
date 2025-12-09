@@ -31,13 +31,13 @@ Future<Uint8List?> pasteImageWebImpl() async {
     // navigator.clipboard.read() returns JSPromise<ClipboardItems>
     final items = await clipboard.read().toDart;
     final itemsList = items.toDart;
-    
+
     for (var i = 0; i < itemsList.length; i++) {
       final item = itemsList[i];
-      
+
       // Check if item has image/png type
       final types = item.types.toDart;
-      if (!types.contains('image/png')) continue;
+      if (!types.contains('image/png'.toJS)) continue;
 
       // item.getType('image/png') -> Promise<Blob>
       final blob = await item.getType('image/png').toDart;
@@ -94,7 +94,7 @@ Future<Map<String, dynamic>> pasteRichTextWebImpl() async {
         final types = item.types.toDart;
 
         // Check for HTML
-        if (types.contains('text/html')) {
+        if (types.contains('text/html'.toJS)) {
           // item.getType('text/html') -> Promise<Blob>
           final blob = await item.getType('text/html').toDart;
 
