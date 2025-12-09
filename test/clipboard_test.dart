@@ -184,7 +184,7 @@ void main() {
       });
     });
 
-        group('EnhancedClipboardData Class', () {
+    group('EnhancedClipboardData Class', () {
       test('EnhancedClipboardData should have correct properties', () {
         final data = EnhancedClipboardData(
           text: 'Hello',
@@ -199,7 +199,7 @@ void main() {
       test('EnhancedClipboardData isEmpty should work correctly', () {
         final emptyData = EnhancedClipboardData();
         final nonEmptyData = EnhancedClipboardData(text: 'Hello');
-        
+
         expect(emptyData.isEmpty, isTrue);
         expect(nonEmptyData.isEmpty, isFalse);
       });
@@ -207,7 +207,7 @@ void main() {
       test('EnhancedClipboardData hasText should work correctly', () {
         final emptyData = EnhancedClipboardData();
         final textData = EnhancedClipboardData(text: 'Hello');
-        
+
         expect(emptyData.hasText, isFalse);
         expect(textData.hasText, isTrue);
       });

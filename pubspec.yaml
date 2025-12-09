@@ -1,6 +1,6 @@
 name: clipboard
 description: Flutter clipboard with text, HTML, and image support.
-version: 3.0.7
+version: 3.0.8
 homepage: https://github.com/samuelezedi/flutter_clipboard
 
 environment:

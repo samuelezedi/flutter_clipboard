@@ -18,4 +18,3 @@ Future<String> pasteTextWebImpl() async {
 Future<dynamic> pasteRichTextWebImpl() async {
   throw UnsupportedError('Web clipboard operations are only supported on web');
 }
-

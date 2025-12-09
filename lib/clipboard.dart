@@ -121,7 +121,8 @@ class FlutterClipboard {
       _lastData = data;
       _notifyListeners(data);
     } on PlatformException catch (e) {
-      throw ClipboardException('Failed to copy text: ${e.message}', 'COPY_ERROR');
+      throw ClipboardException(
+          'Failed to copy text: ${e.message}', 'COPY_ERROR');
     } catch (e) {
       // Fallback to Flutter's Clipboard API
       try {
@@ -150,7 +151,8 @@ class FlutterClipboard {
         'html': html,
       });
       if (result != true) {
-        throw ClipboardException('Copy rich text operation failed', 'COPY_RICH_ERROR');
+        throw ClipboardException(
+            'Copy rich text operation failed', 'COPY_RICH_ERROR');
       }
       final data = EnhancedClipboardData(text: text, html: html);
       _lastData = data;
@@ -189,9 +191,11 @@ class FlutterClipboard {
 
     try {
       // Convert image bytes to list if present
-      Map<String, dynamic> convertedFormats = Map<String, dynamic>.from(formats);
+      Map<String, dynamic> convertedFormats =
+          Map<String, dynamic>.from(formats);
       if (formats['image/png'] is Uint8List) {
-        convertedFormats['image/png'] = (formats['image/png'] as Uint8List).toList();
+        convertedFormats['image/png'] =
+            (formats['image/png'] as Uint8List).toList();
       }
 
       final result = await _channel.invokeMethod<bool>(
@@ -199,7 +203,8 @@ class FlutterClipboard {
         {'formats': convertedFormats},
       );
       if (result != true) {
-        throw ClipboardException('Copy multiple formats operation failed', 'COPY_MULTIPLE_ERROR');
+        throw ClipboardException(
+            'Copy multiple formats operation failed', 'COPY_MULTIPLE_ERROR');
       }
 
       final text = formats['text/plain']?.toString();
@@ -247,7 +252,7 @@ class FlutterClipboard {
     if (imageBytes.isEmpty) {
       throw ClipboardException('Image bytes cannot be empty', 'EMPTY_IMAGE');
     }
-    
+
     // Web platform support
     if (kIsWeb) {
       try {
@@ -263,7 +268,7 @@ class FlutterClipboard {
         );
       }
     }
-    
+
     // Native platform support
     try {
       final result = await _channel.invokeMethod<bool>(
@@ -271,7 +276,8 @@ class FlutterClipboard {
         {'imageBytes': imageBytes.toList()},
       );
       if (result != true) {
-        throw ClipboardException('Copy image operation failed', 'COPY_IMAGE_ERROR');
+        throw ClipboardException(
+            'Copy image operation failed', 'COPY_IMAGE_ERROR');
       }
       final data = EnhancedClipboardData(imageBytes: imageBytes);
       _lastData = data;
@@ -285,7 +291,7 @@ class FlutterClipboard {
       throw ClipboardException('Failed to copy image: $e', 'COPY_IMAGE_ERROR');
     }
   }
-  
+
   /// Web-specific image copy implementation
   static Future<void> _copyImageWeb(Uint8List imageBytes) async {
     // Use conditional import for web - function is imported from web stub/web implementation
@@ -320,14 +326,16 @@ class FlutterClipboard {
           final data = await Clipboard.getData('text/plain');
           return data?.text?.toString() ?? "";
         } catch (fallbackError) {
-          throw ClipboardException('Failed to paste text on web: $e', 'PASTE_ERROR');
+          throw ClipboardException(
+              'Failed to paste text on web: $e', 'PASTE_ERROR');
         }
       }
     }
-    
+
     // Native platform support
     try {
-      final result = await _channel.invokeMethod<Map<dynamic, dynamic>>('paste');
+      final result =
+          await _channel.invokeMethod<Map<dynamic, dynamic>>('paste');
       if (result != null && result['text'] != null) {
         return result['text'] as String;
       }
@@ -340,7 +348,8 @@ class FlutterClipboard {
         final data = await Clipboard.getData('text/plain');
         return data?.text?.toString() ?? "";
       } catch (fallbackError) {
-        throw ClipboardException('Failed to paste text: ${e.message}', 'PASTE_ERROR');
+        throw ClipboardException(
+            'Failed to paste text: ${e.message}', 'PASTE_ERROR');
       }
     } catch (e) {
       throw ClipboardException('Failed to paste text: $e', 'PASTE_ERROR');
@@ -354,7 +363,8 @@ class FlutterClipboard {
       try {
         final result = await pasteRichTextWebImpl();
         // Convert Map to EnhancedClipboardData
-        final data = EnhancedClipboardData.fromMap(result as Map<dynamic, dynamic>);
+        final data =
+            EnhancedClipboardData.fromMap(result as Map<dynamic, dynamic>);
         _lastData = data;
         return data;
       } catch (e) {
@@ -376,10 +386,11 @@ class FlutterClipboard {
         }
       }
     }
-    
+
     // Native platform support
     try {
-      final result = await _channel.invokeMethod<Map<dynamic, dynamic>>('pasteRichText');
+      final result =
+          await _channel.invokeMethod<Map<dynamic, dynamic>>('pasteRichText');
       if (result != null) {
         final data = EnhancedClipboardData.fromMap(result);
         _lastData = data;
@@ -431,10 +442,11 @@ class FlutterClipboard {
         return null;
       }
     }
-    
+
     // Native platform support
     try {
-      final result = await _channel.invokeMethod<Map<dynamic, dynamic>>('pasteImage');
+      final result =
+          await _channel.invokeMethod<Map<dynamic, dynamic>>('pasteImage');
       if (result != null && result['imageBytes'] != null) {
         final bytes = result['imageBytes'] as List<dynamic>;
         return Uint8List.fromList(bytes.cast<int>());
@@ -446,7 +458,7 @@ class FlutterClipboard {
       return null;
     }
   }
-  
+
   /// Web-specific image paste implementation
   static Future<Uint8List?> _pasteImageWeb() async {
     // Use conditional import for web - function is imported from web stub/web implementation
@@ -478,7 +490,8 @@ class FlutterClipboard {
       // Fallback
       final data = await Clipboard.getData('text/plain');
       final htmlData = await Clipboard.getData('text/html');
-      if (data?.text?.isNotEmpty == true && htmlData?.text?.isNotEmpty == true) {
+      if (data?.text?.isNotEmpty == true &&
+          htmlData?.text?.isNotEmpty == true) {
         return ClipboardContentType.mixed;
       } else if (data?.text?.isNotEmpty == true) {
         return ClipboardContentType.text;
@@ -528,7 +541,8 @@ class FlutterClipboard {
         _lastData = EnhancedClipboardData();
         _notifyListeners(_lastData!);
       } catch (fallbackError) {
-        throw ClipboardException('Failed to clear clipboard: ${e.message}', 'CLEAR_ERROR');
+        throw ClipboardException(
+            'Failed to clear clipboard: ${e.message}', 'CLEAR_ERROR');
       }
     } catch (e) {
       throw ClipboardException('Failed to clear clipboard: $e', 'CLEAR_ERROR');
@@ -583,29 +597,28 @@ class FlutterClipboard {
 
     try {
       // Try to use native clipboard change notifications
-      _clipboardChangeSubscription = _eventChannel
-          .receiveBroadcastStream()
-          .listen(
-            (dynamic event) {
-              try {
-                if (event is Map) {
-                  final data = EnhancedClipboardData.fromMap(event);
-                  if (_lastData?.text != data.text ||
-                      _lastData?.html != data.html ||
-                      _lastData?.imageBytes != data.imageBytes) {
-                    _lastData = data;
-                    _notifyListeners(data);
-                  }
-                }
-              } catch (e) {
-                // Ignore parsing errors
+      _clipboardChangeSubscription =
+          _eventChannel.receiveBroadcastStream().listen(
+        (dynamic event) {
+          try {
+            if (event is Map) {
+              final data = EnhancedClipboardData.fromMap(event);
+              if (_lastData?.text != data.text ||
+                  _lastData?.html != data.html ||
+                  _lastData?.imageBytes != data.imageBytes) {
+                _lastData = data;
+                _notifyListeners(data);
               }
-            },
-            onError: (error) {
-              // If native monitoring fails, fall back to polling
-              _startPollingMonitoring(interval);
-            },
-          );
+            }
+          } catch (e) {
+            // Ignore parsing errors
+          }
+        },
+        onError: (error) {
+          // If native monitoring fails, fall back to polling
+          _startPollingMonitoring(interval);
+        },
+      );
 
       // Start native monitoring on platform
       await _channel.invokeMethod<bool>('startMonitoring');

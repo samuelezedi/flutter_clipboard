@@ -1,3 +1,8 @@
+## 3.0.8
+
+* **Code Formatting**: Improved code formatting and readability with better line breaks and consistent formatting.
+* **Code Quality**: Removed trailing whitespace and fixed indentation issues for better code maintainability.
+
 ## 3.0.7
 
 * **Fixed JSString Type Issues**: Fixed type compatibility issues in web clipboard implementation by properly converting Dart Strings to JSString for type comparisons.
