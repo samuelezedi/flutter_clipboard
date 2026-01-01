@@ -1,3 +1,11 @@
+## 3.0.9
+
+* **Windows Platform Support**: Added complete Windows platform support with native C++ implementation.
+* **Windows Clipboard Operations**: Full support for copy/paste of text, rich text (HTML), and images on Windows.
+* **Windows Image Support**: Implemented PNG image copy/paste using GDI+ for conversion between PNG and DIB formats.
+* **Windows Rich Text**: Added HTML Format clipboard support for rich text operations on Windows.
+* **Cross-Platform Coverage**: Package now supports Android, iOS, Web, and Windows platforms with consistent API.
+
 ## 3.0.8
 
 * **Code Formatting**: Improved code formatting and readability with better line breaks and consistent formatting.

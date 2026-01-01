@@ -1,8 +1,8 @@
 # Enhanced Flutter Clipboard
 
-[![pub package](https://img.shields.io/badge/3.0.0-brightgreen)](https://github.com/samuelezedi/flutter_clipboard)
+[![pub package](https://img.shields.io/badge/3.0.9-brightgreen)](https://github.com/samuelezedi/flutter_clipboard)
 
-A super-power clipboard package for Flutter, with text, HTML, and image support.
+A super-power clipboard package for Flutter, with text, Rich text (HTML), and image support.
 
 [GitHub](https://github.com/samuelezedi/flutter_clipboard)
 
@@ -26,7 +26,7 @@ A super-power clipboard package for Flutter, with text, HTML, and image support.
 - ✅ **Utility Methods**: Check clipboard status, size, and content type
 - ✅ **Callback Support**: Success and error callbacks for operations
 - ✅ **Debug Information**: Get detailed clipboard debugging info
-- ✅ **Cross-Platform**: Works on Android, iOS, and Web with graceful fallbacks
+- ✅ **Cross-Platform**: Works on Android, iOS, Web, and Windows with graceful fallbacks
 - ✅ **Null Safety**: Full null safety support
 - ✅ **Memory Safe**: Proper listener management with cleanup mechanisms
 - ✅ **Production Ready**: Battle-tested with comprehensive error handling
@@ -37,7 +37,7 @@ Add this to your package's `pubspec.yaml` file:
 
 ```yaml
 dependencies:
-  clipboard: ^3.0.8
+  clipboard: ^3.0.9
 ```
 
 ## Platform Setup
@@ -50,6 +50,9 @@ No additional setup required. The package automatically handles platform channel
 
 ### Web
 Fully supported with automatic fallback to browser Clipboard API.
+
+### Windows
+No additional setup required. The package uses native Windows API with GDI+ for image support. Platform channels are automatically registered.
 
 ## Basic Usage
 
