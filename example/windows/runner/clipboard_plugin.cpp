@@ -5,10 +5,12 @@
 #endif
 #include <windows.h>
 #include <shlobj.h>
+#include <shellapi.h>
 #include <memory>
 #include <sstream>
 #include <vector>
 #include <algorithm>
+#include <string>
 
 // GDI+ requires min/max macros which are disabled by NOMINMAX
 // Define them explicitly for GDI+ headers
@@ -580,113 +582,176 @@ class ClipboardPluginImpl {
       return;
     }
 
-    if (!IsClipboardFormatAvailable(CF_DIB)) {
-      CloseClipboard();
-      result->Success(EncodableValue(result_map));
-      return;
-    }
-
-    HGLOBAL hMem = GetClipboardData(CF_DIB);
-    if (!hMem) {
-      CloseClipboard();
-      result->Success(EncodableValue(result_map));
-      return;
-    }
-
     // Initialize GDI+
     GdiplusStartupInput gdiplusStartupInput;
     ULONG_PTR gdiplusToken;
     GdiplusStartup(&gdiplusToken, &gdiplusStartupInput, nullptr);
 
-    // Lock the clipboard memory
-    BITMAPINFOHEADER* pBih = (BITMAPINFOHEADER*)GlobalLock(hMem);
-    if (!pBih) {
-      GlobalUnlock(hMem);
-      CloseClipboard();
-      GdiplusShutdown(gdiplusToken);
-      result->Success(EncodableValue(result_map));
-      return;
-    }
+    Bitmap* pBitmap = nullptr;
+    bool clipboardOpened = true;
 
-    // Get bitmap dimensions
-    int width = pBih->biWidth;
-    int height = abs(pBih->biHeight);
-    bool isTopDown = (pBih->biHeight < 0);
-    int bitsPerPixel = pBih->biBitCount;
-
-    // Calculate row size for DIB
-    int rowSize = ((width * bitsPerPixel + 31) / 32) * 4;
-    
-    // DIB may have color table for formats < 24 bits
-    // For 24 and 32 bit, pixels start right after header
-    BYTE* pBits = (BYTE*)(pBih + 1);
-    if (bitsPerPixel <= 8) {
-      // Skip color table (2^bitsPerPixel entries, each 4 bytes)
-      int colorTableSize = static_cast<int>((1ULL << bitsPerPixel) * sizeof(RGBQUAD));
-      pBits = (BYTE*)pBih + sizeof(BITMAPINFOHEADER) + colorTableSize;
-    }
-
-    // Create GDI+ Bitmap from DIB
-    Bitmap* pBitmap = new Bitmap(width, height, PixelFormat32bppARGB);
-    if (!pBitmap || pBitmap->GetLastStatus() != Ok) {
-      GlobalUnlock(hMem);
-      CloseClipboard();
-      GdiplusShutdown(gdiplusToken);
-      if (pBitmap) delete pBitmap;
-      result->Success(EncodableValue(result_map));
-      return;
-    }
-
-    // Copy pixel data to bitmap
-    BitmapData bitmapData;
-    Rect rect(0, 0, width, height);
-
-    if (pBitmap->LockBits(&rect, ImageLockModeWrite, PixelFormat32bppARGB, &bitmapData) == Ok) {
-      BYTE* pDest = (BYTE*)bitmapData.Scan0;
-      BYTE* pSource = isTopDown ? pBits : (pBits + (rowSize * (height - 1)));
-      int sourceStep = isTopDown ? rowSize : -rowSize;
-
-      for (int y = 0; y < height; y++) {
-        BYTE* pDestRow = pDest + y * bitmapData.Stride;
-        if (bitsPerPixel == 32) {
-          // DIB stores BGRA, GDI+ PixelFormat32bppARGB also uses BGRA in memory
-          // Copy directly row by row
-          memcpy(pDestRow, pSource, width * 4);
-        } else if (bitsPerPixel == 24) {
-          // Convert 24-bit BGR to 32-bit BGRA
-          for (int x = 0; x < width; x++) {
-            pDestRow[x * 4 + 0] = pSource[x * 3 + 0]; // B = B
-            pDestRow[x * 4 + 1] = pSource[x * 3 + 1]; // G = G
-            pDestRow[x * 4 + 2] = pSource[x * 3 + 2]; // R = R
-            pDestRow[x * 4 + 3] = 255; // Alpha
+    // Try multiple approaches to get the image
+    // Method 1: Try CF_BITMAP (works for many apps)
+    if (IsClipboardFormatAvailable(CF_BITMAP)) {
+      HBITMAP hBitmap = (HBITMAP)GetClipboardData(CF_BITMAP);
+      if (hBitmap) {
+        // Create a copy of the bitmap (clipboard handle might be invalid after close)
+        HDC hdcScreen = GetDC(nullptr);
+        HDC hdcMem = CreateCompatibleDC(hdcScreen);
+        if (hdcMem) {
+          BITMAP bm;
+          GetObject(hBitmap, sizeof(BITMAP), &bm);
+          HBITMAP hBitmapCopy = CreateCompatibleBitmap(hdcScreen, bm.bmWidth, bm.bmHeight);
+          if (hBitmapCopy) {
+            SelectObject(hdcMem, hBitmapCopy);
+            HDC hdcSource = CreateCompatibleDC(hdcScreen);
+            if (hdcSource) {
+              SelectObject(hdcSource, hBitmap);
+              BitBlt(hdcMem, 0, 0, bm.bmWidth, bm.bmHeight, hdcSource, 0, 0, SRCCOPY);
+              DeleteDC(hdcSource);
+            }
+            pBitmap = Bitmap::FromHBITMAP(hBitmapCopy, nullptr);
+            DeleteObject(hBitmapCopy);
+            if (pBitmap && pBitmap->GetLastStatus() != Ok) {
+              delete pBitmap;
+              pBitmap = nullptr;
+            }
           }
-        } else {
-          // For other formats, we'd need more complex conversion
-          pBitmap->UnlockBits(&bitmapData);
-          GlobalUnlock(hMem);
-          CloseClipboard();
-          delete pBitmap;
-          GdiplusShutdown(gdiplusToken);
-          result->Success(EncodableValue(result_map));
-          return;
+          DeleteDC(hdcMem);
         }
-        pSource += sourceStep;
+        ReleaseDC(nullptr, hdcScreen);
       }
-
-      pBitmap->UnlockBits(&bitmapData);
     }
 
-    // Unlock clipboard memory and close clipboard
-    // Note: We can't use hMem after unlocking, but we don't need it anymore
-    GlobalUnlock(hMem);
-    CloseClipboard();
+    // Method 2: Try CF_DIB (Device Independent Bitmap - most common for external sources)
+    if (!pBitmap && IsClipboardFormatAvailable(CF_DIB)) {
+      HGLOBAL hMem = GetClipboardData(CF_DIB);
+      if (hMem) {
+        void* pDib = GlobalLock(hMem);
+        if (pDib) {
+          BITMAPINFOHEADER* pBih = (BITMAPINFOHEADER*)pDib;
+          
+          // Validate header
+          if (pBih->biSize >= sizeof(BITMAPINFOHEADER) && 
+              pBih->biWidth > 0 && pBih->biHeight != 0) {
+            
+            // Make a complete copy before closing clipboard
+            SIZE_T dibSizeT = GlobalSize(hMem);
+            DWORD dibSize = (dibSizeT > 0xFFFFFFFF) ? 0xFFFFFFFF : static_cast<DWORD>(dibSizeT);
+            std::vector<BYTE> dibData(dibSize);
+            memcpy(dibData.data(), pDib, dibSize);
+            
+            GlobalUnlock(hMem);
+            CloseClipboard();
+            clipboardOpened = false;
+            
+            // Now convert DIB to GDI+ Bitmap using CreateDIBSection
+            HDC hdc = CreateCompatibleDC(nullptr);
+            if (hdc) {
+              BITMAPINFO* pbmi = (BITMAPINFO*)dibData.data();
+              void* pBits = nullptr;
+              
+              // Create DIB section - this allocates memory for us
+              HBITMAP hDibSection = CreateDIBSection(hdc, pbmi, DIB_RGB_COLORS, &pBits, nullptr, 0);
+              if (hDibSection && pBits) {
+                // Calculate source pixel data offset
+                void* pSourceBits = dibData.data() + pBih->biSize;
+                if (pBih->biBitCount <= 8) {
+                  int colorTableSize = static_cast<int>((1ULL << pBih->biBitCount) * sizeof(RGBQUAD));
+                  pSourceBits = dibData.data() + pBih->biSize + colorTableSize;
+                }
+                
+                // Copy pixel data using SetDIBits (handles all conversions automatically)
+                int height = abs(pBih->biHeight);
+                SelectObject(hdc, hDibSection);
+                SetDIBits(hdc, hDibSection, 0, height, pSourceBits, pbmi, DIB_RGB_COLORS);
+                
+                // Create GDI+ Bitmap from the DIB section
+                pBitmap = Bitmap::FromHBITMAP(hDibSection, nullptr);
+                DeleteObject(hDibSection);
+                
+                if (pBitmap && pBitmap->GetLastStatus() != Ok) {
+                  delete pBitmap;
+                  pBitmap = nullptr;
+                }
+              }
+              DeleteDC(hdc);
+            }
+          } else {
+            GlobalUnlock(hMem);
+          }
+        }
+      }
+    }
+
+    // Method 3: Try CF_HDROP (file paths - when copying files from Explorer)
+    if (!pBitmap) {
+      if (!clipboardOpened) {
+        clipboardOpened = OpenClipboard(nullptr);
+      }
+      
+      if (clipboardOpened && IsClipboardFormatAvailable(CF_HDROP)) {
+        HDROP hDrop = (HDROP)GetClipboardData(CF_HDROP);
+        if (hDrop) {
+          // Get number of files
+          UINT fileCount = DragQueryFile(hDrop, 0xFFFFFFFF, nullptr, 0);
+          
+          // Try each file path
+          for (UINT i = 0; i < fileCount && !pBitmap; i++) {
+            // Get file path length
+            UINT pathLen = DragQueryFile(hDrop, i, nullptr, 0);
+            if (pathLen > 0) {
+              std::vector<wchar_t> filePath(pathLen + 1);
+              if (DragQueryFile(hDrop, i, filePath.data(), pathLen + 1) > 0) {
+                // Try to load image from file using GDI+
+                pBitmap = Bitmap::FromFile(filePath.data());
+                if (pBitmap) {
+                  if (pBitmap->GetLastStatus() != Ok) {
+                    delete pBitmap;
+                    pBitmap = nullptr;
+                  } else {
+                    // Check if it's actually an image file (by checking file extension)
+                    std::wstring path(filePath.data());
+                    std::wstring ext = path.substr(path.find_last_of(L".") + 1);
+                    // Convert to lowercase for comparison
+                    for (wchar_t& c : ext) {
+                      c = towlower(c);
+                    }
+                    
+                    // Supported image extensions
+                    if (ext != L"jpg" && ext != L"jpeg" && ext != L"png" && 
+                        ext != L"bmp" && ext != L"gif" && ext != L"tiff" && 
+                        ext != L"tif" && ext != L"ico" && ext != L"webp") {
+                      delete pBitmap;
+                      pBitmap = nullptr;
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+
+    // Close clipboard if still open
+    if (clipboardOpened) {
+      CloseClipboard();
+    }
+
+    // If we still don't have a bitmap, return error
+    if (!pBitmap) {
+      GdiplusShutdown(gdiplusToken);
+      result->Error("PASTE_IMAGE_ERROR", "No image found in clipboard. Copy an image (not a file) or try pasting after copying image data from a browser/app.");
+      return;
+    }
 
     // Convert bitmap to PNG bytes
     IStream* pStream = nullptr;
     if (CreateStreamOnHGlobal(nullptr, TRUE, &pStream) != S_OK) {
       delete pBitmap;
       GdiplusShutdown(gdiplusToken);
-      result->Success(EncodableValue(result_map));
+      result->Error("PASTE_IMAGE_ERROR", "Failed to create stream");
       return;
     }
 
@@ -704,15 +769,17 @@ class ClipboardPluginImpl {
           // Read PNG bytes
           ULONG bytesRead = 0;
           std::vector<uint8_t> pngBytes(stat.cbSize.LowPart);
-          pStream->Read(pngBytes.data(), stat.cbSize.LowPart, &bytesRead);
-
-          // Convert to EncodableList for Flutter
-          EncodableList imageBytes;
-          imageBytes.reserve(bytesRead);
-          for (ULONG i = 0; i < bytesRead; i++) {
-            imageBytes.push_back(EncodableValue(static_cast<int32_t>(pngBytes[i])));
+          HRESULT hr = pStream->Read(pngBytes.data(), stat.cbSize.LowPart, &bytesRead);
+          
+          if (SUCCEEDED(hr) && bytesRead > 0) {
+            // Convert to EncodableList for Flutter
+            EncodableList imageBytes;
+            imageBytes.reserve(bytesRead);
+            for (ULONG i = 0; i < bytesRead; i++) {
+              imageBytes.push_back(EncodableValue(static_cast<int32_t>(pngBytes[i])));
+            }
+            result_map[EncodableValue("imageBytes")] = EncodableValue(imageBytes);
           }
-          result_map[EncodableValue("imageBytes")] = EncodableValue(imageBytes);
         }
       }
     }
@@ -721,7 +788,11 @@ class ClipboardPluginImpl {
     delete pBitmap;
     GdiplusShutdown(gdiplusToken);
 
-    result->Success(EncodableValue(result_map));
+    if (result_map.find(EncodableValue("imageBytes")) != result_map.end()) {
+      result->Success(EncodableValue(result_map));
+    } else {
+      result->Error("PASTE_IMAGE_ERROR", "Failed to convert image to PNG format");
+    }
   }
 
   std::vector<int32_t> GetClipboardImage() {
