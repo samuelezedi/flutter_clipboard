@@ -14,3 +14,16 @@ dependencies:
 dev_dependencies:
   flutter_test:
     sdk: flutter
+
+flutter:
+  plugin:
+    platforms:
+      android:
+        package: net.cubiclab.clipboard
+        pluginClass: ClipboardPlugin
+      ios:
+        pluginClass: ClipboardPlugin
+      macos:
+        pluginClass: ClipboardPlugin
+      windows:
+        pluginClass: ClipboardPlugin
