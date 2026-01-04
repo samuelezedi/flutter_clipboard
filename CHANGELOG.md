@@ -1,3 +1,11 @@
+## 3.0.10
+
+* **Web Rich Text Copy Fix**: Added web implementation for `copyRichText` using ClipboardItem API to properly copy both text and HTML formats.
+* **iOS Rich Text Copy Fix**: Fixed iOS HTML clipboard copy to use `setItems` with Data objects for proper HTML preservation.
+* **Android Image Copy Fix**: Fixed Android image copy to use MediaStore API instead of FileProvider for better compatibility.
+* **Plugin Structure Fix**: Moved all native code from example folder to proper plugin directories for correct plugin registration.
+* **iOS AppDelegate Cleanup**: Removed manual plugin registration from example iOS app to prevent crashes.
+
 ## 3.0.9
 
 * **Windows Platform Support**: Added complete Windows platform support with native C++ implementation.
