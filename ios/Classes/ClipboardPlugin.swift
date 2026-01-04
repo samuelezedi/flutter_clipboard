@@ -48,13 +48,22 @@ public class ClipboardPlugin: NSObject, FlutterPlugin, FlutterStreamHandler {
                 return
             }
             
-            if let html = html, !html.isEmpty {
-                UIPasteboard.general.setValue(html, forPasteboardType: "public.html")
-                if !text.isEmpty {
-                    UIPasteboard.general.string = text
-                }
-            } else {
-                UIPasteboard.general.string = text
+            // Use setItems to set both HTML and text together
+            // HTML must be Data, text can be String
+            // Clear first to ensure clean state
+            UIPasteboard.general.items = []
+            
+            var item: [String: Any] = [:]
+            
+            if !text.isEmpty {
+                item["public.utf8-plain-text"] = text
+            }
+            if let html = html, !html.isEmpty, let htmlData = html.data(using: .utf8) {
+                item["public.html"] = htmlData
+            }
+            
+            if !item.isEmpty {
+                UIPasteboard.general.setItems([item], options: [:])
             }
             result(true)
             
@@ -82,12 +91,19 @@ public class ClipboardPlugin: NSObject, FlutterPlugin, FlutterStreamHandler {
                 }
             }
             
-            // Fallback to HTML or text
-            if let text = formats["text/plain"] as? String {
-                UIPasteboard.general.string = text
+            // Set HTML and text using setItems
+            // HTML must be Data, text can be String
+            var item: [String: Any] = [:]
+            
+            if let text = formats["text/plain"] as? String, !text.isEmpty {
+                item["public.utf8-plain-text"] = text
             }
-            if let html = formats["text/html"] as? String {
-                UIPasteboard.general.setValue(html, forPasteboardType: "public.html")
+            if let html = formats["text/html"] as? String, !html.isEmpty, let htmlData = html.data(using: .utf8) {
+                item["public.html"] = htmlData
+            }
+            
+            if !item.isEmpty {
+                UIPasteboard.general.setItems([item], options: [:])
             }
             result(true)
             
@@ -114,8 +130,40 @@ public class ClipboardPlugin: NSObject, FlutterPlugin, FlutterStreamHandler {
             result(["text": text])
             
         case "pasteRichText":
-            let text = UIPasteboard.general.string ?? ""
-            let html = UIPasteboard.general.value(forPasteboardType: "public.html") as? String
+            // Read from items array (most reliable method)
+            var text = ""
+            var html: String?
+            
+            if let items = UIPasteboard.general.items as? [[String: Any]], !items.isEmpty {
+                let firstItem = items[0]
+                
+                // Get text (can be String or Data)
+                if let textValue = firstItem["public.utf8-plain-text"] as? String {
+                    text = textValue
+                } else if let textData = firstItem["public.utf8-plain-text"] as? Data,
+                          let textString = String(data: textData, encoding: .utf8) {
+                    text = textString
+                } else {
+                    // Fallback to string property
+                    text = UIPasteboard.general.string ?? ""
+                }
+                
+                // Get HTML (should be Data when set with setItems)
+                if let htmlData = firstItem["public.html"] as? Data,
+                   let htmlString = String(data: htmlData, encoding: .utf8) {
+                    html = htmlString
+                } else if let htmlValue = firstItem["public.html"] as? String {
+                    html = htmlValue
+                }
+            } else {
+                // Fallback to convenience properties
+                text = UIPasteboard.general.string ?? ""
+                if let htmlData = UIPasteboard.general.data(forPasteboardType: "public.html"),
+                   let htmlString = String(data: htmlData, encoding: .utf8) {
+                    html = htmlString
+                }
+            }
+            
             let imageBytes = getImageBytesFromClipboard()
             result([
                 "text": text,
@@ -133,35 +181,21 @@ public class ClipboardPlugin: NSObject, FlutterPlugin, FlutterStreamHandler {
             }
             
         case "getContentType":
-            let text = UIPasteboard.general.string ?? ""
-            let html = UIPasteboard.general.value(forPasteboardType: "public.html") as? String
-            let hasImage = UIPasteboard.general.image != nil
-            
-            if hasImage && (!text.isEmpty || (html != nil && !html!.isEmpty)) {
-                result("mixed")
-            } else if hasImage {
-                result("image")
-            } else if text.isEmpty && (html == nil || html!.isEmpty) {
-                result("empty")
-            } else if !text.isEmpty && html != nil && !html!.isEmpty {
-                result("mixed")
-            } else if html != nil && !html!.isEmpty {
-                result("html")
-            } else {
-                result("text")
-            }
+            // Don't access clipboard automatically - only check if formats are available
+            // This avoids triggering iOS clipboard banner on startup
+            result("unknown")
             
         case "hasData":
-            let text = UIPasteboard.general.string ?? ""
-            result(!text.isEmpty)
+            // Don't access clipboard automatically - return false to avoid triggering iOS clipboard banner
+            result(false)
             
         case "clear":
             UIPasteboard.general.string = ""
             result(true)
             
         case "getDataSize":
-            let text = UIPasteboard.general.string ?? ""
-            result(text.count)
+            // Don't access clipboard automatically - return 0 to avoid triggering iOS clipboard banner
+            result(0)
             
         case "startMonitoring":
             startMonitoring()
@@ -201,8 +235,14 @@ public class ClipboardPlugin: NSObject, FlutterPlugin, FlutterStreamHandler {
     }
     
     private func checkClipboardChange() {
+        // Only check clipboard when monitoring is active and user has interacted
+        // This is called when app becomes active, so it's a user gesture
         let text = UIPasteboard.general.string ?? ""
-        let html = UIPasteboard.general.value(forPasteboardType: "public.html") as? String
+        var html: String?
+        if let htmlData = UIPasteboard.general.data(forPasteboardType: "public.html"),
+           let htmlString = String(data: htmlData, encoding: .utf8) {
+            html = htmlString
+        }
         
         eventSink?([
             "text": text,

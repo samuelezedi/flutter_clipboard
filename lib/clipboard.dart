@@ -145,6 +145,23 @@ class FlutterClipboard {
       );
     }
 
+    // Web platform support
+    if (kIsWeb) {
+      try {
+        await copyRichTextWebImpl(text, html);
+        final data = EnhancedClipboardData(text: text, html: html);
+        _lastData = data;
+        _notifyListeners(data);
+        return;
+      } catch (e) {
+        throw ClipboardException(
+          'Failed to copy rich text on web: $e',
+          'COPY_RICH_ERROR',
+        );
+      }
+    }
+
+    // Native platform support
     try {
       final result = await _channel.invokeMethod<bool>('copyRichText', {
         'text': text,
@@ -466,10 +483,12 @@ class FlutterClipboard {
   }
 
   /// Get clipboard content type
+  /// Note: This method no longer accesses the clipboard automatically to avoid permission prompts.
+  /// Call paste() or pasteRichText() first to access clipboard content.
   static Future<ClipboardContentType> getContentType() async {
     try {
       final result = await _channel.invokeMethod<String>('getContentType');
-      if (result != null) {
+      if (result != null && result != 'unknown') {
         switch (result) {
           case 'text':
             return ClipboardContentType.text;
@@ -487,34 +506,24 @@ class FlutterClipboard {
             return ClipboardContentType.unknown;
         }
       }
-      // Fallback
-      final data = await Clipboard.getData('text/plain');
-      final htmlData = await Clipboard.getData('text/html');
-      if (data?.text?.isNotEmpty == true &&
-          htmlData?.text?.isNotEmpty == true) {
-        return ClipboardContentType.mixed;
-      } else if (data?.text?.isNotEmpty == true) {
-        return ClipboardContentType.text;
-      } else if (htmlData?.text?.isNotEmpty == true) {
-        return ClipboardContentType.html;
-      } else {
-        return ClipboardContentType.empty;
-      }
+      // Return unknown to avoid accessing clipboard automatically
+      return ClipboardContentType.unknown;
     } catch (e) {
       return ClipboardContentType.unknown;
     }
   }
 
   /// Check if clipboard has content
+  /// Note: This method no longer accesses the clipboard automatically to avoid permission prompts.
+  /// Call paste() or pasteRichText() first to access clipboard content.
   static Future<bool> hasData() async {
     try {
       final result = await _channel.invokeMethod<bool>('hasData');
       if (result != null) {
         return result;
       }
-      // Fallback
-      final data = await Clipboard.getData('text/plain');
-      return data?.text?.isNotEmpty == true;
+      // Return false to avoid accessing clipboard automatically
+      return false;
     } catch (e) {
       return false;
     }
@@ -550,15 +559,16 @@ class FlutterClipboard {
   }
 
   /// Get clipboard data size (approximate)
+  /// Note: This method no longer accesses the clipboard automatically to avoid permission prompts.
+  /// Call paste() or pasteRichText() first to access clipboard content.
   static Future<int> getDataSize() async {
     try {
       final result = await _channel.invokeMethod<int>('getDataSize');
       if (result != null) {
         return result;
       }
-      // Fallback
-      final data = await Clipboard.getData('text/plain');
-      return data?.text?.length ?? 0;
+      // Return 0 to avoid accessing clipboard automatically
+      return 0;
     } catch (e) {
       return 0;
     }

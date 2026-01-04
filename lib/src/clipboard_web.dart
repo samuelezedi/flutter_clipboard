@@ -68,6 +68,31 @@ Future<String> pasteTextWebImpl() async {
   }
 }
 
+// Web implementation for copying rich text (text + HTML)
+Future<void> copyRichTextWebImpl(String text, String? html) async {
+  final clipboard = web.window.navigator.clipboard;
+
+  try {
+    // Create Blobs for text and HTML
+    final textBlob = web.Blob([text.toJS].toJS, web.BlobPropertyBag(type: 'text/plain'));
+    final clipboardItemData = <String, JSAny?>{'text/plain': textBlob};
+    
+    // Add HTML if provided
+    if (html != null && html.isNotEmpty) {
+      final htmlBlob = web.Blob([html.toJS].toJS, web.BlobPropertyBag(type: 'text/html'));
+      clipboardItemData['text/html'] = htmlBlob;
+    }
+    
+    // Create ClipboardItem with both text/plain and text/html
+    final clipboardItem = web.ClipboardItem(clipboardItemData.jsify()! as JSObject);
+    
+    // Write to clipboard
+    await clipboard.write([clipboardItem].toJS).toDart;
+  } catch (e) {
+    throw Exception('Failed to copy rich text to clipboard: $e');
+  }
+}
+
 // Web implementation for pasting rich text (text + HTML)
 Future<Map<String, dynamic>> pasteRichTextWebImpl() async {
   final clipboard = web.window.navigator.clipboard;

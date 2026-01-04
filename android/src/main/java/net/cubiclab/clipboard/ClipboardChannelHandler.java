@@ -3,11 +3,13 @@ package net.cubiclab.clipboard;
 import android.content.ClipData;
 import android.content.ClipboardManager;
 import android.content.Context;
+import android.content.ContentValues;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.net.Uri;
 import android.os.Build;
-import androidx.core.content.FileProvider;
+import android.os.Environment;
+import android.provider.MediaStore;
 import io.flutter.plugin.common.MethodCall;
 import io.flutter.plugin.common.MethodChannel;
 import io.flutter.plugin.common.EventChannel;
@@ -130,6 +132,7 @@ public class ClipboardChannelHandler implements MethodChannel.MethodCallHandler,
                 imageBytes = (List<Integer>) formats.get("image/png");
             }
 
+            // Handle image using MediaStore
             if (imageBytes != null && !imageBytes.isEmpty()) {
                 byte[] byteArray = new byte[imageBytes.size()];
                 for (int i = 0; i < imageBytes.size(); i++) {
@@ -137,7 +140,7 @@ public class ClipboardChannelHandler implements MethodChannel.MethodCallHandler,
                 }
                 Bitmap bitmap = BitmapFactory.decodeByteArray(byteArray, 0, byteArray.length);
                 if (bitmap != null) {
-                    Uri imageUri = saveBitmapToCache(bitmap);
+                    Uri imageUri = insertImageToMediaStore(bitmap);
                     if (imageUri != null) {
                         ClipData clip = ClipData.newUri(context.getContentResolver(), "image", imageUri);
                         if (text != null && !text.isEmpty()) {
@@ -179,16 +182,59 @@ public class ClipboardChannelHandler implements MethodChannel.MethodCallHandler,
                 result.error("INVALID_IMAGE", "Failed to decode image", null);
                 return;
             }
-            Uri imageUri = saveBitmapToCache(bitmap);
+            
+            // Use MediaStore to insert image and get content:// URI
+            Uri imageUri = insertImageToMediaStore(bitmap);
             if (imageUri == null) {
-                result.error("SAVE_ERROR", "Failed to save image to cache", null);
+                result.error("SAVE_ERROR", "Failed to save image to MediaStore", null);
                 return;
             }
+            
             ClipData clip = ClipData.newUri(context.getContentResolver(), "image", imageUri);
             clipboardManager.setPrimaryClip(clip);
             result.success(true);
         } catch (Exception e) {
-            result.error("COPY_IMAGE_ERROR", e.getMessage(), null);
+            result.error("COPY_IMAGE_ERROR", "Failed to copy image: " + e.getMessage(), null);
+        }
+    }
+    
+    private Uri insertImageToMediaStore(Bitmap bitmap) {
+        try {
+            ContentValues values = new ContentValues();
+            values.put(MediaStore.Images.Media.DISPLAY_NAME, "clipboard_image_" + System.currentTimeMillis() + ".png");
+            values.put(MediaStore.Images.Media.MIME_TYPE, "image/png");
+            
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                values.put(MediaStore.Images.Media.RELATIVE_PATH, Environment.DIRECTORY_PICTURES);
+                values.put(MediaStore.Images.Media.IS_PENDING, 1);
+            }
+            
+            Uri uri = context.getContentResolver().insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, values);
+            if (uri == null) {
+                return null;
+            }
+            
+            try {
+                java.io.OutputStream outputStream = context.getContentResolver().openOutputStream(uri);
+                if (outputStream == null) {
+                    return null;
+                }
+                bitmap.compress(Bitmap.CompressFormat.PNG, 100, outputStream);
+                outputStream.close();
+                
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                    values.clear();
+                    values.put(MediaStore.Images.Media.IS_PENDING, 0);
+                    context.getContentResolver().update(uri, values, null, null);
+                }
+                
+                return uri;
+            } catch (Exception e) {
+                context.getContentResolver().delete(uri, null, null);
+                return null;
+            }
+        } catch (Exception e) {
+            return null;
         }
     }
 
@@ -246,46 +292,13 @@ public class ClipboardChannelHandler implements MethodChannel.MethodCallHandler,
     }
 
     private void handleGetContentType(MethodCall call, MethodChannel.Result result) {
-        try {
-            ClipData clipData = clipboardManager.getPrimaryClip();
-            if (clipData == null || clipData.getItemCount() == 0) {
-                result.success("empty");
-                return;
-            }
-            ClipData.Item item = clipData.getItemAt(0);
-            boolean hasText = item.getText() != null;
-            boolean hasHtml = false;
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN) {
-                hasHtml = item.getHtmlText() != null;
-            }
-            boolean hasImage = item.getUri() != null && isImageUri(item.getUri());
-
-            if (hasImage && (hasText || hasHtml)) {
-                result.success("mixed");
-            } else if (hasImage) {
-                result.success("image");
-            } else if (hasText && hasHtml) {
-                result.success("mixed");
-            } else if (hasHtml) {
-                result.success("html");
-            } else if (hasText) {
-                result.success("text");
-            } else {
-                result.success("empty");
-            }
-        } catch (Exception e) {
-            result.success("unknown");
-        }
+        // Don't access clipboard automatically
+        result.success("unknown");
     }
 
     private void handleHasData(MethodCall call, MethodChannel.Result result) {
-        try {
-            ClipData clipData = clipboardManager.getPrimaryClip();
-            boolean hasData = clipData != null && clipData.getItemCount() > 0;
-            result.success(hasData);
-        } catch (Exception e) {
-            result.success(false);
-        }
+        // Don't access clipboard automatically
+        result.success(false);
     }
 
     private void handleClear(MethodCall call, MethodChannel.Result result) {
@@ -303,54 +316,32 @@ public class ClipboardChannelHandler implements MethodChannel.MethodCallHandler,
     }
 
     private void handleGetDataSize(MethodCall call, MethodChannel.Result result) {
-        try {
-            ClipData clipData = clipboardManager.getPrimaryClip();
-            String text = clipData != null && clipData.getItemCount() > 0
-                ? clipData.getItemAt(0).getText().toString()
-                : "";
-            result.success(text.length());
-        } catch (Exception e) {
-            result.success(0);
-        }
-    }
-
-    private Uri saveBitmapToCache(Bitmap bitmap) {
-        try {
-            File cacheDir = context.getCacheDir();
-            File imageFile = new File(cacheDir, "clipboard_image_" + System.currentTimeMillis() + ".png");
-            FileOutputStream out = new FileOutputStream(imageFile);
-            bitmap.compress(Bitmap.CompressFormat.PNG, 100, out);
-            out.close();
-
-            // Use FileProvider for N+
-            return FileProvider.getUriForFile(
-                context,
-                context.getPackageName() + ".provider",
-                imageFile
-            );
-        } catch (Exception e) {
-            return null;
-        }
+        // Don't access clipboard automatically
+        result.success(0);
     }
 
     private List<Integer> getImageFromClipboard(ClipData.Item item) {
         if (item == null || item.getUri() == null) {
             return null;
         }
-        if (!isImageUri(item.getUri())) {
-            return null;
-        }
         try {
             android.content.ContentResolver resolver = context.getContentResolver();
+            String mimeType = resolver.getType(item.getUri());
+            if (mimeType == null || !mimeType.startsWith("image/")) {
+                return null;
+            }
+            
             java.io.InputStream inputStream = resolver.openInputStream(item.getUri());
             if (inputStream == null) {
                 return null;
             }
+            
             Bitmap bitmap = BitmapFactory.decodeStream(inputStream);
             inputStream.close();
             if (bitmap == null) {
                 return null;
             }
+            
             ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
             bitmap.compress(Bitmap.CompressFormat.PNG, 100, outputStream);
             byte[] byteArray = outputStream.toByteArray();
@@ -364,11 +355,6 @@ public class ClipboardChannelHandler implements MethodChannel.MethodCallHandler,
         } catch (Exception e) {
             return null;
         }
-    }
-
-    private boolean isImageUri(Uri uri) {
-        String mimeType = context.getContentResolver().getType(uri);
-        return mimeType != null && mimeType.startsWith("image/");
     }
 
     @Override

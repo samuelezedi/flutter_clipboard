@@ -142,35 +142,20 @@ public class ClipboardPlugin: NSObject, FlutterPlugin, FlutterStreamHandler {
             }
             
         case "getContentType":
-            let text = pasteboard.string(forType: .string) ?? ""
-            let html = pasteboard.string(forType: .html)
-            let hasImage = pasteboard.canReadObject(forClasses: [NSImage.self], options: nil)
-            
-            if hasImage && (!text.isEmpty || (html != nil && !html!.isEmpty)) {
-                result("mixed")
-            } else if hasImage {
-                result("image")
-            } else if text.isEmpty && (html == nil || html!.isEmpty) {
-                result("empty")
-            } else if !text.isEmpty && html != nil && !html!.isEmpty {
-                result("mixed")
-            } else if html != nil && !html!.isEmpty {
-                result("html")
-            } else {
-                result("text")
-            }
+            // Don't access clipboard automatically
+            result("unknown")
             
         case "hasData":
-            let text = pasteboard.string(forType: .string) ?? ""
-            result(!text.isEmpty)
+            // Don't access clipboard automatically
+            result(false)
             
         case "clear":
             pasteboard.clearContents()
             result(true)
             
         case "getDataSize":
-            let text = pasteboard.string(forType: .string) ?? ""
-            result(text.count)
+            // Don't access clipboard automatically
+            result(0)
             
         case "startMonitoring":
             startMonitoring()

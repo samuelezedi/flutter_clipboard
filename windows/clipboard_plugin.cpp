@@ -720,43 +720,13 @@ class ClipboardPluginImpl {
   }
 
   void HandleGetContentType(std::unique_ptr<flutter::MethodResult<EncodableValue>> result) {
-    if (OpenClipboard(nullptr)) {
-      bool has_text = IsClipboardFormatAvailable(CF_UNICODETEXT);
-      UINT cf_html = RegisterClipboardFormatA("HTML Format");
-      bool has_html = (cf_html != 0 && IsClipboardFormatAvailable(cf_html));
-      bool has_image = IsClipboardFormatAvailable(CF_DIB);
-      
-      std::string content_type = "empty";
-      if (has_image && (has_text || has_html)) {
-        content_type = "mixed";
-      } else if (has_image) {
-        content_type = "image";
-      } else if (has_text && has_html) {
-        content_type = "mixed";
-      } else if (has_html) {
-        content_type = "html";
-      } else if (has_text) {
-        content_type = "text";
-      }
-      
-      CloseClipboard();
-      result->Success(EncodableValue(content_type));
-    } else {
-      result->Success(EncodableValue("unknown"));
-    }
+    // Don't access clipboard automatically
+    result->Success(EncodableValue("unknown"));
   }
 
   void HandleHasData(std::unique_ptr<flutter::MethodResult<EncodableValue>> result) {
-    if (OpenClipboard(nullptr)) {
-      bool has_data = IsClipboardFormatAvailable(CF_UNICODETEXT) ||
-                      IsClipboardFormatAvailable(CF_DIB) ||
-                      (RegisterClipboardFormatA("HTML Format") != 0 && 
-                       IsClipboardFormatAvailable(RegisterClipboardFormatA("HTML Format")));
-      CloseClipboard();
-      result->Success(EncodableValue(has_data));
-    } else {
-      result->Success(EncodableValue(false));
-    }
+    // Don't access clipboard automatically
+    result->Success(EncodableValue(false));
   }
 
   void HandleClear(std::unique_ptr<flutter::MethodResult<EncodableValue>> result) {
@@ -770,19 +740,8 @@ class ClipboardPluginImpl {
   }
 
   void HandleGetDataSize(std::unique_ptr<flutter::MethodResult<EncodableValue>> result) {
-    if (OpenClipboard(nullptr)) {
-      int size = 0;
-      if (IsClipboardFormatAvailable(CF_UNICODETEXT)) {
-        HGLOBAL hMem = GetClipboardData(CF_UNICODETEXT);
-        if (hMem) {
-          size = static_cast<int>(GlobalSize(hMem));
-        }
-      }
-      CloseClipboard();
-      result->Success(EncodableValue(size));
-    } else {
-      result->Success(EncodableValue(0));
-    }
+    // Don't access clipboard automatically
+    result->Success(EncodableValue(0));
   }
 
   flutter::EventSink<flutter::EncodableValue>* event_sink_ = nullptr;
