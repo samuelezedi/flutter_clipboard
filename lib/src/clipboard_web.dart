@@ -74,18 +74,21 @@ Future<void> copyRichTextWebImpl(String text, String? html) async {
 
   try {
     // Create Blobs for text and HTML
-    final textBlob = web.Blob([text.toJS].toJS, web.BlobPropertyBag(type: 'text/plain'));
+    final textBlob =
+        web.Blob([text.toJS].toJS, web.BlobPropertyBag(type: 'text/plain'));
     final clipboardItemData = <String, JSAny?>{'text/plain': textBlob};
-    
+
     // Add HTML if provided
     if (html != null && html.isNotEmpty) {
-      final htmlBlob = web.Blob([html.toJS].toJS, web.BlobPropertyBag(type: 'text/html'));
+      final htmlBlob =
+          web.Blob([html.toJS].toJS, web.BlobPropertyBag(type: 'text/html'));
       clipboardItemData['text/html'] = htmlBlob;
     }
-    
+
     // Create ClipboardItem with both text/plain and text/html
-    final clipboardItem = web.ClipboardItem(clipboardItemData.jsify()! as JSObject);
-    
+    final clipboardItem =
+        web.ClipboardItem(clipboardItemData.jsify()! as JSObject);
+
     // Write to clipboard
     await clipboard.write([clipboardItem].toJS).toDart;
   } catch (e) {
