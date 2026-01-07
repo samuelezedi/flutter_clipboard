@@ -45,12 +45,12 @@ endforeach()
 
 # Set include directories
 # The generated code expects <clipboard/clipboard_plugin.h>
-# The include path should point to the parent directory so that
+# The include path should point to the plugin root directory so that
 # <clipboard/clipboard_plugin.h> resolves correctly
 # (CMAKE_CURRENT_SOURCE_DIR is clipboard/windows, parent is clipboard root)
 get_filename_component(PLUGIN_ROOT_DIR "${CMAKE_CURRENT_SOURCE_DIR}" DIRECTORY)
 get_filename_component(PLUGIN_SYMLINKS_DIR "${PLUGIN_ROOT_DIR}" DIRECTORY)
 target_include_directories(clipboard_plugin PUBLIC
-  "${PLUGIN_SYMLINKS_DIR}"
+  "${PLUGIN_ROOT_DIR}"
   "${CMAKE_CURRENT_SOURCE_DIR}"
 )
