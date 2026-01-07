@@ -589,8 +589,7 @@ class ClipboardPluginImpl {
       if (IsClipboardFormatAvailable(CF_BITMAP)) {
         HBITMAP hBitmap = (HBITMAP)GetClipboardData(CF_BITMAP);
         if (hBitmap) {
-          // Don't close clipboard yet - we need the handle
-          // Create a copy of the bitmap
+          // Create a copy of the bitmap before closing clipboard
           HDC hdcScreen = GetDC(nullptr);
           HDC hdcMem = CreateCompatibleDC(hdcScreen);
           if (hdcMem) {
@@ -605,6 +604,10 @@ class ClipboardPluginImpl {
                 BitBlt(hdcMem, 0, 0, bm.bmWidth, bm.bmHeight, hdcSource, 0, 0, SRCCOPY);
                 DeleteDC(hdcSource);
               }
+              // Close clipboard now that we have a copy
+              CloseClipboard();
+              clipboardOpened = false;
+              
               pBitmap = Bitmap::FromHBITMAP(hBitmapCopy, nullptr);
               DeleteObject(hBitmapCopy);
               if (pBitmap && pBitmap->GetLastStatus() != Ok) {
@@ -617,20 +620,32 @@ class ClipboardPluginImpl {
           ReleaseDC(nullptr, hdcScreen);
         }
       }
+      // Close clipboard if Method 1 didn't succeed
+      if (clipboardOpened) {
+        CloseClipboard();
+        clipboardOpened = false;
+      }
     }
 
-    // Method 2: Try CF_DIB (Device Independent Bitmap - most common for external sources)
-    if (!pBitmap) {
-      if (!clipboardOpened) {
-        clipboardOpened = OpenClipboard(nullptr);
+    // Method 2: Try CF_DIBV5 (Device Independent Bitmap V5 - preferred by modern apps)
+    if (!pBitmap && OpenClipboard(nullptr)) {
+      clipboardOpened = true;
+      UINT dibFormat = CF_DIBV5;
+      if (IsClipboardFormatAvailable(CF_DIBV5)) {
+        dibFormat = CF_DIBV5;
+      } else if (IsClipboardFormatAvailable(CF_DIB)) {
+        dibFormat = CF_DIB;
       }
       
-      if (clipboardOpened && IsClipboardFormatAvailable(CF_DIB)) {
-        HGLOBAL hMem = GetClipboardData(CF_DIB);
+      if (dibFormat == CF_DIBV5 || dibFormat == CF_DIB) {
+        HGLOBAL hMem = GetClipboardData(dibFormat);
         if (hMem) {
           void* pDib = GlobalLock(hMem);
           if (pDib) {
             BITMAPINFOHEADER* pBih = (BITMAPINFOHEADER*)pDib;
+            
+            // For CF_DIBV5, use BITMAPV5HEADER which extends BITMAPINFOHEADER
+            DWORD headerSize = (dibFormat == CF_DIBV5) ? sizeof(BITMAPV5HEADER) : sizeof(BITMAPINFOHEADER);
             
             // Validate header
             if (pBih->biSize >= sizeof(BITMAPINFOHEADER) && 
@@ -683,6 +698,11 @@ class ClipboardPluginImpl {
             }
           }
         }
+      }
+      // Close clipboard if Method 2 didn't succeed
+      if (clipboardOpened) {
+        CloseClipboard();
+        clipboardOpened = false;
       }
     }
 
