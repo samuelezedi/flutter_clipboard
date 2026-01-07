@@ -1,6 +1,6 @@
 # Enhanced Flutter Clipboard
 
-[![pub package](https://img.shields.io/badge/3.0.9-brightgreen)](https://github.com/samuelezedi/flutter_clipboard)
+[![pub package](https://img.shields.io/badge/3.0.11-brightgreen)](https://github.com/samuelezedi/flutter_clipboard)
 
 A super-power clipboard package for Flutter, with text, Rich text (HTML), and image support.
 

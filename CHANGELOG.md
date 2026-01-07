@@ -1,3 +1,8 @@
+## 3.0.11
+
+* **Windows Bug Fixes**: Fixed Windows clipboard plugin issues and improved CMakeLists.txt configuration.
+* **Web Implementation Improvements**: Enhanced web clipboard implementation with better error handling and compatibility.
+
 ## 3.0.10
 
 * **Web Rich Text Copy Fix**: Added web implementation for `copyRichText` using ClipboardItem API to properly copy both text and HTML formats.
