@@ -1,27 +1,15 @@
 PODS:
-  - clipboard (3.0.9):
-    - Flutter
   - Flutter (1.0.0)
-  - image_picker_ios (0.0.1):
-    - Flutter
 
 DEPENDENCIES:
-  - clipboard (from `.symlinks/plugins/clipboard/ios`)
   - Flutter (from `Flutter`)
-  - image_picker_ios (from `.symlinks/plugins/image_picker_ios/ios`)
 
 EXTERNAL SOURCES:
-  clipboard:
-    :path: ".symlinks/plugins/clipboard/ios"
   Flutter:
     :path: Flutter
-  image_picker_ios:
-    :path: ".symlinks/plugins/image_picker_ios/ios"
 
 SPEC CHECKSUMS:
-  clipboard: 08546de523654e07f35040c29512eea233d16053
   Flutter: cabc95a1d2626b1b06e7179b784ebcf0c0cde467
-  image_picker_ios: c560581cceedb403a6ff17f2f816d7fea1421fc1
 
 PODFILE CHECKSUM: c38f5b14f8c3dc3358e2ba55859a287b114ede23
 

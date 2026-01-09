@@ -1,7 +1,9 @@
-## 3.0.11
+## 3.0.14
 
-* **Windows Bug Fixes**: Fixed Windows clipboard plugin issues and improved CMakeLists.txt configuration.
-* **Web Implementation Improvements**: Enhanced web clipboard implementation with better error handling and compatibility.
+* **Swift Package Manager Support**: Migrated iOS and macOS plugins from CocoaPods to Swift Package Manager (SPM) for better compatibility and future-proofing.
+* **Dual Support**: Plugin now supports both CocoaPods (via updated podspec) and Swift Package Manager, ensuring backward compatibility.
+* **Modern Package Structure**: Reorganized plugin structure to follow Swift Package Manager conventions with `Package.swift` files.
+* **CocoaPods Compatibility**: Updated podspec files to work with new SPM structure while maintaining CocoaPods support.
 
 ## 3.0.10
 
