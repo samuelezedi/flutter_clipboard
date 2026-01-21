@@ -53,4 +53,5 @@ get_filename_component(PLUGIN_SYMLINKS_DIR "${PLUGIN_ROOT_DIR}" DIRECTORY)
 target_include_directories(clipboard_plugin PUBLIC
   "${PLUGIN_SYMLINKS_DIR}"
   "${CMAKE_CURRENT_SOURCE_DIR}"
+  "${CMAKE_CURRENT_SOURCE_DIR}/include"
 )
