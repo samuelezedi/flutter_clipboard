@@ -643,10 +643,7 @@ class ClipboardPluginImpl {
           void* pDib = GlobalLock(hMem);
           if (pDib) {
             BITMAPINFOHEADER* pBih = (BITMAPINFOHEADER*)pDib;
-            
-            // For CF_DIBV5, use BITMAPV5HEADER which extends BITMAPINFOHEADER
-            DWORD headerSize = (dibFormat == CF_DIBV5) ? sizeof(BITMAPV5HEADER) : sizeof(BITMAPINFOHEADER);
-            
+
             // Validate header
             if (pBih->biSize >= sizeof(BITMAPINFOHEADER) && 
                 pBih->biWidth > 0 && pBih->biHeight != 0) {
